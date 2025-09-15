@@ -7,7 +7,7 @@ import { MachineService } from './machine.service';
 @Module({
     imports: [
         // ==========================================================================
-        // TypeOrmModule.forFeature([MachineStatusHistory],'machine_mmp') // register entity together with name of config of second database SQL server
+        TypeOrmModule.forFeature([MachineStatusHistory]) // register entity together with name of config of second database SQL server
     ],
     // ============================================================================
     // 🎮 Controller điều khiển API

@@ -28,6 +28,6 @@ export class MachineController {
   getSummary(@Query('factory') factory: number) {
     //use getMachinePerformanceSummaryDemo for demo
     //use getMachinePerformanceSummary for actual in MMP
-    return this.machineService.getMachinePerformanceSummaryDemo(factory);
+    return this.machineService.getMachinePerformanceSummary(factory);
   }
 }
