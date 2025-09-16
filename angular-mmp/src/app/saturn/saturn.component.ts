@@ -24,22 +24,53 @@ import { Machine } from '../models/machine.model';                // 📦 Import
 import { HttpClientModule } from '@angular/common/http';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
+import { DialogModule } from 'primeng/dialog';
+import { StatusMachineDialogComponent } from '../shared/components/status-machine-dialog/status-machine-dialog.component';
+import { DialogService, DynamicDialogRef } from 'primeng/dynamicdialog';
+import { Tooltip } from 'primeng/tooltip';
+import { Toast } from 'primeng/toast';
+import { MessageService } from 'primeng/api';
+import { UsersService } from '../services/users.service';
 
 @Component({
   selector: 'app-saturn',
   standalone: true,
-  imports: [CommonModule, HttpClientModule, FormsModule], // ✅ 🇻🇳 Import các module cần thiết | 🇯🇵 必要なモジュールを読み込み
+  imports: [CommonModule, HttpClientModule, FormsModule, DialogModule, Tooltip, Toast], // ✅ 🇻🇳 Import các module cần thiết | 🇯🇵 必要なモジュールを読み込み
   templateUrl: './saturn.component.html',
-  styleUrls: ['./saturn.component.scss']
+  styleUrls: ['./saturn.component.scss'],
+  providers: [DialogService, MessageService]
 })
 export class SaturnComponent implements OnInit, OnDestroy {
   // 🧠 🇻🇳 Mảng lưu danh sách máy được lấy từ API | 🇯🇵 APIから取得された機械のリスト
   machines: Machine[] = [];
   editMode: boolean = false; // ✅ 🇻🇳 Bật/tắt chế độ chỉnh sửa vị trí máy | 🇯🇵 位置編集モードのオン/オフ
-  constructor(private machineService: MachineService) {}
+  //variable data return of dialog
+  ref_dialog!: DynamicDialogRef 
+  //list shifts
+  listShifts = [
+    {
+      id: 1,
+      name: "Shift Day"
+    },
+    {
+      id: 2,
+      name: "Shift Night"
+    }
+  ]
+  userPermissions:any[]=[] //mảng chứa quyền của user đang đăng nhập
+  constructor( //declare service used in this component
+    private machineService: MachineService,
+    public dialogService: DialogService,
+    private messageService: MessageService,
+    private userService: UsersService
+  ) {}
 
   ngOnInit(): void {
-
+    //gọi api lấy thông tin user
+    this.userService.selectedUser.subscribe(
+      res => {
+        this.userPermissions = res.permissions //trích xuất quyền của user
+      });
     // 📥 🇻🇳 Gọi API khi component khởi tạo | 🇯🇵 コンポーネント初期化時にAPIを呼び出す
     this.fetchMachines();
 
@@ -109,7 +140,21 @@ onWheel(event: WheelEvent): void {
     // APIにパラメータ factory = 5 を渡して、saturn工場のデータを取得する
     this.machineService.getMachines(5).subscribe({
       next: (data) => {
-        this.machines = data;
+        this.machines = data.map(element=>{
+          if(element.schedule_stop_machine){
+            return {
+              ...element,
+              schedule_stop_machine: {
+                ...element.schedule_stop_machine,
+                shift: element.schedule_stop_machine?.shift?this.listShifts.find(e=>e.id==element.schedule_stop_machine?.shift)?.name:'All day', //if shift is not null, get shift name. Else, set to all day
+                date_end: element.schedule_stop_machine?.date_end??'Undetermined'  //if date_end is null, set to Undetermined
+              }
+            }
+          }else{
+            return element
+          }
+          
+        })
       },
       error: (err) => {
         console.error('Lỗi khi gọi API:', err);
@@ -194,5 +239,51 @@ onWheel(event: WheelEvent): void {
     if (event.button === 2) {
       this.isPanning = false;
     }
+  }
+  inputDowntime(machine: Machine){
+    //open dialog to input information of Schedule Stop Machine. This dialog is used to save schedule stop machine and set machine to Run status
+    this.ref_dialog = this.dialogService.open(StatusMachineDialogComponent, {
+      header: `Update status machine (id: ${machine.id})`,  //header of dialog
+      closable: true,  //display symbol X on top right of dialog
+      modal: true,   //blur area outside dialog
+        data: {  // data passed to dialog
+            machine
+        },
+      width: '40%',  //width of dialog
+      height: '70%',  //height of dialog
+      contentStyle: { overflow: 'auto' }, //if content overflow, a scrollbar appears
+    });
+
+    this.ref_dialog.onClose.subscribe(
+      {
+        next: (data)=>{
+          if(data){
+            if(data.type=='save-status-machine'){ //save schedule stop machine
+              this.machineService.saveStatusMachine(data.value).subscribe({
+                next: (res)=>{
+                  this.messageService.add({ severity: 'success', summary: 'Success', detail: 'Save successfully' }); //show notify success
+                  this.fetchMachines() //reload data after save schedule stop machine
+                },
+                error: (error)=>{
+                  this.messageService.add({ severity: 'error', summary: 'Error', detail: 'Save error' }); //show notify error
+                }
+              })
+            }else if(data.type=='run-machine'){ //set machine to Run status
+              this.machineService.runMachine(data.value).subscribe({
+                next: (res)=>{
+                  this.messageService.add({ severity: 'success', summary: 'Success', detail: 'Set run machine successfully' }); //show notify success
+                  this.fetchMachines() //reload data after set Run status of machine
+                },
+                error: (error)=>{
+                  this.messageService.add({ severity: 'error', summary: 'Error', detail: 'Run machine error' }); //show notify error
+                }
+              })
+            }
+            
+          }
+          
+        }
+      }
+    )
   }
 }

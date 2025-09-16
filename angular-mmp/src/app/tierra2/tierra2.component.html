@@ -1,3 +1,4 @@
+
 <!-- ==============================================================================
 src/app/tierra2/tierra2.component.html
 📄 tierra2.component.html - 🇻🇳 Giao diện hiển thị sơ đồ máy của nhà máy tierra2
@@ -55,9 +56,40 @@ src/app/tierra2/tierra2.component.html
     </div>
 
   </div>
-
-  <div class="w-full h-full overflow-auto">
-
+  <!-- 設備状態と稼働率の凡例表示 -->
+  <div class="w-full h-full overflow-auto" style="position: relative;z-index: 1;">
+    <div style="position: absolute; top: 0; left: 0;z-index: 2;" class="ml-5 mt-5">
+      <h6>Status Machine</h6>
+      <div class="flex gap-2 mb-2">
+        <span style="background-color: #ff0000ff;padding: 10px;"></span>
+        <span>Stop</span>
+      </div>
+      <div class="flex gap-2">
+        <span style="background-color: #84ff00ff;padding: 10px;"></span>
+        <span>Run</span>
+      </div>
+      <h6>Status Performance</h6>
+      <div class="flex gap-2 mb-2">
+        <span style="background-color: #2cd7f5ff;padding: 10px;"></span>
+        <span>&ge;87.5%</span>
+      </div>
+      <div class="flex gap-2 mb-2">
+        <span style="background-color: #59df5eff;padding: 10px;"></span>
+        <span>&ge;80%</span>
+      </div>
+      <div class="flex gap-2 mb-2">
+        <span style="background-color: #ffeb3b;padding: 10px;"></span>
+        <span>&ge;50%</span>
+      </div>
+      <div class="flex gap-2 mb-2">
+        <span style="background-color: #f44336;padding: 10px;"></span>
+        <span>&#60;50%</span>
+      </div>
+      <div class="flex gap-2 mb-2">
+        <span style="background-color: #ccc;padding: 10px;"></span>
+        <span>Stop machine</span>
+      </div>
+    </div>
     <svg
       viewBox="0 0 3840 2400"
       preserveAspectRatio="xMidYMid meet"
@@ -107,19 +139,35 @@ src/app/tierra2/tierra2.component.html
           <!-- 💡 🇻🇳 Hiển thị máy loại 40 bằng hình elip: thể hiện hiệu suất
               🇯🇵 タイプ40の機械は楕円で描画し、パフォーマンスを色で表現 -->
           <g *ngFor="let machine of machinesType40">
-            <ellipse
+            <!-- There is tooltip to show information of schedule stop machine -->
+            <!-- If there is schedule stop machine, the ellipse will filled by grey color -->
+            <!-- There is click event to show dialog input schedule stop machine -->
+             <!-- user có quyền số 11 có thể click mở dialog-->
+            <ellipse [pTooltip]="'Stop machine\nFrom date: ' + machine.schedule_stop_machine?.date_start + 
+                                '\nTo date: ' + machine.schedule_stop_machine?.date_end + 
+                                '\nShift: ' + machine.schedule_stop_machine?.shift + 
+                                '\nReason: ' + machine.schedule_stop_machine?.content"
+              [tooltipDisabled]="!machine.schedule_stop_machine"
+              [tooltipStyleClass]="'custom-tooltip'"
               [attr.cx]="machine.x + 60"
               [attr.cy]="machine.y + 20"
-              [attr.fill]="getPerformanceColor(machine.performance)"
+              [attr.fill]="machine.schedule_stop_machine?'#ccc':getPerformanceColor(machine.performance)"
               class="machine-ellipse"
+              (click)="userPermissions.includes(11)&&inputDowntime(machine)"
             />
-            <text
+            <text [pTooltip]="'Stop machine\nFrom date: ' + machine.schedule_stop_machine?.date_start + 
+                              '\nTo date: ' + machine.schedule_stop_machine?.date_end +
+                              '\nShift: ' + machine.schedule_stop_machine?.shift +  
+                              '\nReason: ' + machine.schedule_stop_machine?.content"
+              [tooltipDisabled]="!machine.schedule_stop_machine"
+              [tooltipStyleClass]="'custom-tooltip'" 
               [attr.x]="machine.x + 65"
               [attr.y]="machine.y + 35"
               class="performance-text"
               text-anchor="middle"
+              (click)="userPermissions.includes(11)&&inputDowntime(machine)"
             >
-              {{ (machine.performance ?? 0) * 100 | number:'1.1-1' }}%
+              {{ machine.schedule_stop_machine? 'Stop':((machine.performance ?? 0) * 100 | number:'1.1-1' )+'%'}}
             </text>
           </g>
 
@@ -152,3 +200,5 @@ src/app/tierra2/tierra2.component.html
   </div>
 
 </div>
+
+<p-toast />
