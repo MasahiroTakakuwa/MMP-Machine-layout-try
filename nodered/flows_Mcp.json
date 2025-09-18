@@ -1,0 +1,144 @@
+[
+    {
+        "id": "8396ccc20f4f4b37",
+        "type": "group",
+        "z": "05e09ed669d76f08",
+        "name": "PLC Connect(MC Protocol)",
+        "style": {
+            "label": true
+        },
+        "nodes": [
+            "7d60ad62dd04bd13",
+            "cf80397d8e5a5e24",
+            "15ab5c6a6e361dd9",
+            "0d2d9d42a610a279",
+            "d632d7c42dd0f45d",
+            "ab5ef8830cf5fed4"
+        ],
+        "x": 34,
+        "y": 619,
+        "w": 1092,
+        "h": 182
+    },
+    {
+        "id": "7d60ad62dd04bd13",
+        "type": "function",
+        "z": "05e09ed669d76f08",
+        "g": "8396ccc20f4f4b37",
+        "name": "RD Response exchange",
+        "func": "let response = msg.payload.toString().trim(); // 例: \"+00123\"\nlet value = parseInt(response); // 10進数に変換\nmsg.payload = value;\nreturn msg;\n",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 810,
+        "y": 760,
+        "wires": [
+            []
+        ]
+    },
+    {
+        "id": "cf80397d8e5a5e24",
+        "type": "debug",
+        "z": "05e09ed669d76f08",
+        "g": "8396ccc20f4f4b37",
+        "name": "debug 2",
+        "active": true,
+        "tosidebar": true,
+        "console": false,
+        "tostatus": false,
+        "complete": "payload",
+        "targetType": "msg",
+        "statusVal": "",
+        "statusType": "auto",
+        "x": 1020,
+        "y": 660,
+        "wires": []
+    },
+    {
+        "id": "15ab5c6a6e361dd9",
+        "type": "function",
+        "z": "05e09ed669d76f08",
+        "g": "8396ccc20f4f4b37",
+        "name": "RDS Response exchange",
+        "func": "let response = msg.payload.toString().trim();\nlet values = response.split(\" \").map(v => parseInt(v));\nmsg.payload = {\n    DM100: values[0],\n    DM101: values[1],\n    DM102: values[2]\n};\nreturn msg;",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 810,
+        "y": 660,
+        "wires": [
+            [
+                "cf80397d8e5a5e24"
+            ]
+        ]
+    },
+    {
+        "id": "0d2d9d42a610a279",
+        "type": "tcp request",
+        "z": "05e09ed669d76f08",
+        "g": "8396ccc20f4f4b37",
+        "name": "",
+        "server": "192.168.7.11",
+        "port": "8501",
+        "out": "time",
+        "ret": "buffer",
+        "splitc": "2000",
+        "newline": "",
+        "trim": false,
+        "tls": "",
+        "x": 560,
+        "y": 660,
+        "wires": [
+            [
+                "15ab5c6a6e361dd9"
+            ]
+        ]
+    },
+    {
+        "id": "d632d7c42dd0f45d",
+        "type": "function",
+        "z": "05e09ed669d76f08",
+        "g": "8396ccc20f4f4b37",
+        "name": "Send command",
+        "func": "//msg.payload =\"RD DM100.U\\r\"; \nmsg.payload =\"RDS DM100.U 3\\r\"; \nreturn msg;",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 320,
+        "y": 660,
+        "wires": [
+            [
+                "0d2d9d42a610a279"
+            ]
+        ]
+    },
+    {
+        "id": "ab5ef8830cf5fed4",
+        "type": "inject",
+        "z": "05e09ed669d76f08",
+        "g": "8396ccc20f4f4b37",
+        "name": "",
+        "props": [],
+        "repeat": "",
+        "crontab": "",
+        "once": false,
+        "onceDelay": "0.5",
+        "topic": "",
+        "x": 130,
+        "y": 660,
+        "wires": [
+            [
+                "d632d7c42dd0f45d"
+            ]
+        ]
+    }
+]
