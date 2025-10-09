@@ -5,6 +5,7 @@ import { Body, Controller, Post, Res, Get, Req, UseInterceptors, ClassSerializer
 import { Request, Response } from 'express';
 import { AuthGuard } from './auth.guard';
 import { User } from '../entities/users.entity';
+import { LoginDto } from './models/login.dto';
 
 @UseInterceptors(ClassSerializerInterceptor)
 @Controller()
@@ -25,13 +26,12 @@ export class AuthController {
     //Login with user
     @Post('login')
     async login(
-        @Body('user_name') user_name: string,
-        @Body('password') password: string,
+        @Body() body: LoginDto,
         @Res({ passthrough: true }) response: Response,
         @Req() request: Request
     ): Promise<User> {
         // Ensure loginUser returns a single User, not an array
-        return this.userService.loginUser(user_name, password, response, request);
+        return this.userService.loginUser(body, response, request);
     }
 
     //Get info user by token
