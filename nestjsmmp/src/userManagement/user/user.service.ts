@@ -17,6 +17,7 @@ import { JwtService } from '@nestjs/jwt';
 import { AuthService } from '../auth/auth.service';
 import { UserToken } from '../entities/user-tokens.entity';
 import { ChangePasswordrDto } from './models/change-password.dto';
+import { LoginDto } from '../auth/models/login.dto';
 @Injectable()
 export class UserService extends AbstractService {
     constructor(
@@ -273,10 +274,10 @@ export class UserService extends AbstractService {
 
     // EN: User login function. Verify username & password, then issue JWT tokens.
     // JP: ユーザーログイン機能。ユーザー名とパスワードを確認し、JWTトークンを発行します。
-    async loginUser(user_name: string, password: string, response : Response, request: Request): Promise<User> {
+    async loginUser(body: LoginDto, response : Response, request: Request): Promise<User> {
         // EN: Find user by username
         // JP: ユーザー名でユーザーを検索します
-        let user = await super.findOne({user_name:user_name}, ['department', 'position', 'roles', 'roles.permissions']);
+        let user = await super.findOne({user_name:body.user_name}, ['department', 'position', 'roles', 'roles.permissions']);
         if(!user){
             throw new UnauthorizedException('User does not exist.', { cause: new Error(), description: 'User does not exist.' });
         }
@@ -289,7 +290,7 @@ export class UserService extends AbstractService {
 
         // EN: Compare input password with stored hash
         // JP: 入力されたパスワードと保存されているハッシュを比較します
-        if(!await bcrypt.compare(password, user.password)){
+        if(!await bcrypt.compare(body.password, user.password)){
             throw new UnauthorizedException('Invalid username or password.', { cause: new Error(), description: 'Invalid username or password.' });
         }
 
