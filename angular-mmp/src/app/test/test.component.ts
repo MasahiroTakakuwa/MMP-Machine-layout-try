@@ -3,7 +3,7 @@ import { ChartModule } from 'primeng/chart';
 import { FluidModule } from 'primeng/fluid';
 import { debounceTime, Subscription } from 'rxjs';
 import { LayoutService } from '../layout/service/layout.service';
-//import { KpiService } from '../services/kpi.service';
+import { KpiService } from '../services/kpi.service';
 
 import { SelectButtonModule } from 'primeng/selectbutton';
 import { FormsModule } from '@angular/forms';
@@ -75,7 +75,7 @@ export class Test implements OnInit, OnDestroy{
     subscription: Subscription;
     constructor(
         private layoutService: LayoutService,
-        //private kpiService: KpiService
+        private kpiService: KpiService
         ) {
         this.subscription = this.layoutService.configUpdate$.pipe(debounceTime(25)).subscribe(() => {
             this.initCharts();
@@ -271,39 +271,39 @@ export class Test implements OnInit, OnDestroy{
         const firstDayofMonth = new Date(today.getFullYear(), today.getMonth(), 1);
         const formatted = firstDayofMonth.toISOString().split('T')[0]
         // 生産実績グラフ更新(日付で合算)        
-        // this.kpiService.getProductHistory(factoryCode, partsCode, formatted)
-        // .subscribe((items: any[]) => {
-        //     // 配列を初期化(31日分で0埋めした状態で宣言)
-        //     const totalsByDay: number[] = new Array(31).fill(0);
-        //     const cumulativeProd: number[] = new Array(31).fill(0);
-        //     const totalsByDay2: number[] = new Array(31).fill(0);
-        //     const cumulativeProd2: number[] = new Array(31).fill(0);
-        //     // 日ごとの生産数をtotalsByDayに格納
-        //     items.forEach(item => {              
-        //         const day = parseInt(item.prod_date.split('-')[2], 10); // 日付部分をintに変換
-        //         totalsByDay[day-1] = item.total_production; // dayをインデックスにして格納
-        //         totalsByDay2[day-1] = item.total_production-800; // dayをインデックスにして格納
-        //     });
-        //     // 累計生産数をcumulativeProdに格納
-        //     let cumulativeSum = 0;
-        //     let cumulativeSum2 = 0;
-        //     for (let i = 0; i < totalsByDay.length; i++) {
-        //         cumulativeSum += Number(totalsByDay[i]);
-        //         cumulativeProd[i] = cumulativeSum;
-        //         cumulativeSum2 += Number(totalsByDay2[i]);
-        //         cumulativeProd2[i] = cumulativeSum2;
+        this.kpiService.getProductHistory(factoryCode, partsCode, formatted)
+        .subscribe((items: any[]) => {
+            // 配列を初期化(31日分で0埋めした状態で宣言)
+            const totalsByDay: number[] = new Array(31).fill(0);
+            const cumulativeProd: number[] = new Array(31).fill(0);
+            const totalsByDay2: number[] = new Array(31).fill(0);
+            const cumulativeProd2: number[] = new Array(31).fill(0);
+            // 日ごとの生産数をtotalsByDayに格納
+            items.forEach(item => {              
+                const day = parseInt(item.prod_date.split('-')[2], 10); // 日付部分をintに変換
+                totalsByDay[day-1] = item.total_production; // dayをインデックスにして格納
+                totalsByDay2[day-1] = item.total_production-800; // dayをインデックスにして格納
+            });
+            // 累計生産数をcumulativeProdに格納
+            let cumulativeSum = 0;
+            let cumulativeSum2 = 0;
+            for (let i = 0; i < totalsByDay.length; i++) {
+                cumulativeSum += Number(totalsByDay[i]);
+                cumulativeProd[i] = cumulativeSum;
+                cumulativeSum2 += Number(totalsByDay2[i]);
+                cumulativeProd2[i] = cumulativeSum2;
 
-        //     }
+            }
 
-        //     // データセットに値を代入。
-        //     this.ProdChartData.datasets[0].data = totalsByDay2;
-        //     this.ProdChartData.datasets[1].data = totalsByDay;
-        //     this.ProdChartData.datasets[2].data = cumulativeProd2;
-        //     this.ProdChartData.datasets[3].data = cumulativeProd;
-        //     // グラフエリアを更新
-        //     this.ProdChartData = { ...this.ProdChartData };
+            // データセットに値を代入。
+            this.ProdChartData.datasets[0].data = totalsByDay2;
+            this.ProdChartData.datasets[1].data = totalsByDay;
+            this.ProdChartData.datasets[2].data = cumulativeProd2;
+            this.ProdChartData.datasets[3].data = cumulativeProd;
+            // グラフエリアを更新
+            this.ProdChartData = { ...this.ProdChartData };
             
-        // });
+        });
 
     }
 
@@ -319,22 +319,22 @@ export class Test implements OnInit, OnDestroy{
         }
             //その他 
         else{            
-            // this.kpiService.getPartsNo(factoryCode).subscribe((items: Kpi[]) =>
-            // {
-            //     const dynamicItems = items.map(item => ({
-            //         name: item.parts_no,
-            //         code: item.parts_no
-            //     }));
+            this.kpiService.getPartsNo(factoryCode).subscribe((items: Kpi[]) =>
+            {
+                const dynamicItems = items.map(item => ({
+                    name: item.parts_no,
+                    code: item.parts_no
+                }));
                 
-            //     if(factoryCode === 5){
-            //         //Saturn
-            //         this.dropdownValues = [fixedItem, ...dynamicItems, fixedItem2]
-            //     }
-            //     else{
-            //         this.dropdownValues = [fixedItem, ...dynamicItems]
-            //     }
+                if(factoryCode === 5){
+                    //Saturn
+                    this.dropdownValues = [fixedItem, ...dynamicItems, fixedItem2]
+                }
+                else{
+                    this.dropdownValues = [fixedItem, ...dynamicItems]
+                }
                                 
-            // });
+            });
 
         }
         // 先頭のインデックスを固定項目に設定
@@ -353,14 +353,14 @@ export class Test implements OnInit, OnDestroy{
 
             else{
                 // 設備ドロップダウンリスト更新
-                // this.kpiService.getLineNo(factoryCode,partsCode).subscribe((items:any[]) =>
-                // {
-                //     const dynamicItems = items.map(item => ({
-                //         name: item.line_no,
-                //         code: item.machine_no
-                //     }));
-                //     this.dropdown2Values = [fixedItem, ...dynamicItems]
-                // });
+                this.kpiService.getLineNo(factoryCode,partsCode).subscribe((items:any[]) =>
+                {
+                    const dynamicItems = items.map(item => ({
+                        name: item.line_no,
+                        code: item.machine_no
+                    }));
+                    this.dropdown2Values = [fixedItem, ...dynamicItems]
+                });
             }
             this.dropdown2Value = this.dropdown2Values[0];
 

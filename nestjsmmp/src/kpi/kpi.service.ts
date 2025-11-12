@@ -51,9 +51,6 @@ async getLineNoSummary(factory: number,parts_no: string){
     }
     const result = await query.getRawMany();
 
-    console.log('query:',query.getSql());
-    console.log('param:',query.getParameters());
-    console.log('result:',result);
     return result;
   }
 

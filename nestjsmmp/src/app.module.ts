@@ -9,6 +9,7 @@ import { typeAsyncOrmMVPConfig } from './configs/configuration.mvp.config';
 import { InputStopMachineModule } from './input-stop-machine/input-stop-machine.module';
 import { MachineModule } from './machine/machine.module';
 import { typeAsyncOrmMMPMachineConfig } from './configs/configuration-machine.mmp.config';
+import { KpiModule } from './kpi/kpi.module';
 @Module({
   imports: [
     ConfigModule.forRoot(
@@ -24,7 +25,8 @@ import { typeAsyncOrmMMPMachineConfig } from './configs/configuration-machine.mm
     UserManagementModule,
     LogsModule,
     InputStopMachineModule,
-    MachineModule
+    MachineModule,
+    KpiModule
   ],
   providers: [],
 })
