@@ -35,10 +35,11 @@ export class MachineController {
   async getMachineCount(@Query('factory') factory: number) {
     const runningCount = await this.machineService.getRunningMachineCount(factory);
     const stoppingCount = await this.machineService.getStoppingMachineCount(factory);
-    
+    const lineCount = await this.machineService.getLineCount(factory);
     return {
       runningCount,
       stoppingCount,
+      lineCount,
     };
 
   }

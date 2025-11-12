@@ -150,5 +150,17 @@ export class MachineService {
 
     return Number(result.count)
   }
+
+    // 指定された工場のライン数をカウント
+  async getLineCount(factory: number){
+    const result = await this.machineRepo
+      .createQueryBuilder('m')
+      .select('COUNT(*)','count')
+      .where('m.factory_type = :factory',{factory})
+      .andWhere('m.machine_type = 40')
+      .getRawOne();
+
+    return Number(result.count)
+  }
   
 }
