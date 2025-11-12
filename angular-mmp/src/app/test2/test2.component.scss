@@ -1,0 +1,131 @@
+// ==============================================================================
+// src/app/test2/test2.component.scss
+// 📄 test2.component.scss - 🇻🇳 File định nghĩa style SVG layout cho nhà máy Mercury
+//                            🇯🇵 Mercury工場のレイアウトSVGに関するスタイル定義をコピー
+//
+// ✅ 🇻🇳 File này định nghĩa giao diện hiển thị máy móc (hình chữ nhật, hình tròn, ellipse),
+//         hiệu ứng khi hover, khi được chọn, và cách biểu diễn hiệu suất/sản lượng.
+//
+// ✅ 🇯🇵 このファイルでは、機械（長方形・円・楕円）の表示、
+//         ホバー・選択時のエフェクト、生産性やカウンターの表現方法をスタイルで定義します。
+// ==============================================================================
+
+.machine {
+  font-size: 34px;
+  fill: black;
+  font-weight: regular;
+  text-anchor: middle; // 🇻🇳 Căn giữa theo trục ngang | 🇯🇵 水平方向に中央揃え
+}
+
+.machine:hover {
+  cursor: pointer;     // 🇻🇳 Biến con trỏ chuột thành tay khi hover | 🇯🇵 ホバー時にポインタを手の形に
+  fill: #ffffff;       // 🇻🇳 Chữ đổi màu khi hover | 🇯🇵 ホバー時に文字色を変更
+}
+
+.machine:hover text {
+  cursor: pointer;
+  fill: #ff0000;       // 🇻🇳 Khi hover chữ sẽ đổi thành màu đỏ | 🇯🇵 ホバー時に文字を赤色に
+}
+
+.machine-rect {
+  rx: 10;
+  stroke: black;
+  stroke-width: 2;
+}
+
+.machine-rect:hover {
+  rx: 10;
+  stroke: black;
+  stroke-width: 2;
+}
+
+.machine-rect.selected {
+  fill: #ffcccc;       // 🇻🇳 Khi máy được chọn, đổi nền nhạt | 🇯🇵 選択時は背景が薄い赤に変わる
+}
+
+.machine-rect.selected:hover {
+  fill: #ff9999;       // 🇻🇳 Hover máy đang được chọn → màu đậm hơn | 🇯🇵 選択中のホバー時は濃い赤に
+}
+
+.machine-circle {
+  r: 50;
+  stroke: black;
+  stroke-width: 3;
+}
+
+.machine-circle:hover {
+  stroke: black;
+  stroke-width: 3;
+}
+
+.machine.selected {
+  fill: #ff0000;
+}
+
+.machine.selected text {
+  fill: #ffffff;
+}
+
+.machine.productivity {
+  fill: #00ff00;       // 🇻🇳 Màu máy thể hiện năng suất (hiệu suất cao) | 🇯🇵 生産性を示す緑色（高効率）
+}
+
+.machine.productivity text {
+  fill: #ffffff;
+}
+
+.machine.counter {
+  fill: #0000ff;       // 🇻🇳 Máy thể hiện sản lượng (counter) | 🇯🇵 生産数を示す青色
+}
+
+.machine.counter text {
+  fill: #ffffff;
+}
+
+.performance {
+  font-size: 40px;
+  fill: black;
+  font-weight: regular;
+  text-anchor: middle;
+}
+
+.performance:hover {
+  cursor: pointer;
+  fill: #ffffff;
+}
+
+// 稼働率表示アイコン
+.machine-ellipse {
+  rx: 70;
+  ry: 70;
+  stroke: black;
+  stroke-width: 0;
+}
+
+// 稼働率テキスト
+.performance-text {
+  font-size: 65px;
+  fill: black;
+  font-weight: regular;
+  text-anchor: middle;
+}
+
+.performance-text:hover {
+  cursor: pointer;
+  fill: #ffffff;
+}
+
+::ng-deep .custom-tooltip {
+  max-width: none !important; /* no limit width */
+  white-space: normal !important; /* allow line breaks */
+  width: auto !important; /* Width varies with content */
+}
+
+.center-text {
+  text-align: center;
+}
+
+::ng-deep .centered-table .p-datatable-thead > tr > th,
+::ng-deep .centered-table .p-datatable-tbody > tr > td{
+  font-size: 28px;
+}

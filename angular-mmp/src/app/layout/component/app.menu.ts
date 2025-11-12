@@ -218,7 +218,22 @@ export class AppMenu {
                         target: '_blank'
                     }
                 ]
-            }
+            },
+            // test
+            {
+                label: 'sample',
+                items: [
+                    { label: 'test',
+                      icon: 'pi pi-fw pi-home',
+                      routerLink: ['/test']
+                    },
+                    { label: 'test2',
+                      icon: 'pi pi-fw pi-home',
+                      routerLink: ['/test2']
+                    }
+                ]
+            },
+            //
         ];
     }
 
