@@ -30,4 +30,17 @@ export class MachineController {
     //use getMachinePerformanceSummary for actual in MMP
     return this.machineService.getMachinePerformanceSummary(factory);
   }
+    // 稼働中・停止中の設備台数をカウント
+  @Get('count')
+  async getMachineCount(@Query('factory') factory: number) {
+    const runningCount = await this.machineService.getRunningMachineCount(factory);
+    const stoppingCount = await this.machineService.getStoppingMachineCount(factory);
+    
+    return {
+      runningCount,
+      stoppingCount,
+    };
+
+  }
+
 }
