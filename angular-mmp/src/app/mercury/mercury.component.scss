@@ -118,3 +118,12 @@
   white-space: normal !important; /* allow line breaks */
   width: auto !important; /* Width varies with content */
 }
+
+.center-text {
+  text-align: center;
+}
+
+::ng-deep .centered-table .p-datatable-thead > tr > th,
+::ng-deep .centered-table .p-datatable-tbody > tr > td{
+  font-size: 28px;
+}
