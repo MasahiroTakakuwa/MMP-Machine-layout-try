@@ -20,15 +20,37 @@ src/app/tierra2/tierra2.component.html
     • 位置編集モードのON/OFF切替
     • 編集モード時に表示されるグリッド線
 =============================================================================== -->
+<p-fluid class="grid grid-cols-12 gap-2">
+        <!-- 12分割してそのうち3列分を取得 -->
+        <div class="col-span-12 xl:col-span-1 flex-col h-full">
+            <!-- tableを配置(稼働台数などを表示) -->       
+            <p-table 
+                [value]="items"
+                [columns]="columns"
+                class="p-datatable-sm flex-grow"
+                styleClass="centered-table"
+                [style]=" {height: '100%'} "
+                >
+            <!-- <ng-template pTemplate="header" let-columns>
+                <tr>
+                <th *ngFor="let col of columns" [ngClass]="col.styleClass">{{ col.header }}</th>
+                </tr>
+            </ng-template> -->
+            <ng-template pTemplate="body" let-rowData let-columns="columns">
+                <tr>
+                <td *ngFor="let col of columns" [ngClass]="col.styleClass">{{ rowData[col.field] }}</td>
+                </tr>
+            </ng-template>
+            </p-table>
 
+        </div>
+        <div class="col-span-12 xl:col-span-11">
+            <!-- 工場レイアウトを貼り付け -->
 <!-- Layout tierra2 -->
 <div class="relative w-full h-full bg-gray-0 overflow-y-hidden">
 
   <!-- ✅ 🇻🇳 Nền là ảnh SVG hiển thị sơ đồ nhà máy
            🇯🇵 工場レイアウトの背景としてSVG画像を使用 -->
-  <!-- 🇻🇳 Bạn cần dán nội dung file SVG vào bên trong thẻ <svg>
-       🇯🇵 SVGファイルの中身をこの<svg>タグ内に貼り付けてください -->
-
   <div class="flex justify-between items-center mb-1">
     <h1 class="text-lg font-bold mb-0">🏭 Tierra-2 Layout</h1>
 
@@ -54,42 +76,29 @@ src/app/tierra2/tierra2.component.html
         <span class="ml-2 font-semibold text-sm">Edit mode</span>
       </label>
     </div>
-
   </div>
+
   <!-- 設備状態と稼働率の凡例表示 -->
   <div class="w-full h-full overflow-auto" style="position: relative;z-index: 1;">
-    <div style="position: absolute; top: 0; left: 0;z-index: 2;" class="ml-5 mt-5">
-      <h6>Status Machine</h6>
-      <div class="flex gap-2 mb-2">
-        <span style="background-color: #ff0000ff;padding: 10px;"></span>
-        <span>Stop</span>
-      </div>
-      <div class="flex gap-2">
-        <span style="background-color: #84ff00ff;padding: 10px;"></span>
-        <span>Run</span>
-      </div>
-      <h6>Status Performance</h6>
-      <div class="flex gap-2 mb-2">
-        <span style="background-color: #2cd7f5ff;padding: 10px;"></span>
-        <span>&ge;87.5%</span>
-      </div>
-      <div class="flex gap-2 mb-2">
-        <span style="background-color: #59df5eff;padding: 10px;"></span>
-        <span>&ge;80%</span>
-      </div>
-      <div class="flex gap-2 mb-2">
-        <span style="background-color: #ffeb3b;padding: 10px;"></span>
-        <span>&ge;50%</span>
-      </div>
-      <div class="flex gap-2 mb-2">
-        <span style="background-color: #f44336;padding: 10px;"></span>
-        <span>&#60;50%</span>
-      </div>
-      <div class="flex gap-2 mb-2">
-        <span style="background-color: #ccc;padding: 10px;"></span>
-        <span>Stop machine</span>
-      </div>
-    </div>
+        <div style="position: absolute; top: 0; left: 0;z-index: 2;" class="ml-5 mt-5">
+        <h6>設備状態(Tierra2)</h6>
+        <div class="flex gap-2 mb-2">
+            <span style="background-color: #84ff00ff;padding: 16px;"></span>
+            <span style="font-size: 24px;">稼働中</span>
+        </div>
+        <div class="flex gap-2 mb-2">
+            <span style="background-color: #ff0000ff;padding: 16px;"></span>
+            <span style="font-size: 24px;">停止中</span>
+        </div>
+        <div class="flex gap-2 mb-2">
+            <span style="background-color: #ccc;padding: 16px;"></span>
+            <span style="font-size: 24px;">計画停止中</span>
+        </div>
+        <div class="flex gap-2 mb-2">
+            <span style="font-size: 24px;">数値：当日稼働率</span>
+        </div>
+        
+        </div>
     <svg
       viewBox="0 0 3840 2400"
       preserveAspectRatio="xMidYMid meet"
@@ -113,7 +122,7 @@ src/app/tierra2/tierra2.component.html
           <g *ngFor="let machine of machinesTypeNot40">
             <!-- 🇻🇳 Khối chữ nhật đứng nền trắng: thân đèn tháp
             🇯🇵 白い縦長の長方形：タワーライトの本体 -->
-            <rect
+            <!-- <rect
               [attr.x]="machine.x + 50"
               [attr.y]="machine.y - 30"
               width="40"
@@ -122,18 +131,18 @@ src/app/tierra2/tierra2.component.html
               stroke="black"
               stroke-width="2"
               rx="15"
-            />
+            /> -->
 
             <!-- 🇻🇳 Chấm tròn đại diện bóng đèn màu theo trạng thái
             🇯🇵 状態に応じた色付きの丸：タワーライト上部 -->
-            <circle
+            <!-- <circle
               [attr.cx]="machine.x + 70"
               [attr.cy]="machine.y - 0"
               r="15"
               [attr.fill]="getStatusColor(machine.status)"
               stroke="black"
               stroke-width="1"
-            />
+            /> -->
           </g>
 
           <!-- 💡 🇻🇳 Hiển thị máy loại 40 bằng hình elip: thể hiện hiệu suất
@@ -144,21 +153,21 @@ src/app/tierra2/tierra2.component.html
             <!-- There is click event to show dialog input schedule stop machine -->
              <!-- user có quyền số 11 có thể click mở dialog-->
             <ellipse [pTooltip]="'Stop machine\nFrom date: ' + machine.schedule_stop_machine?.date_start + 
-                                '\nTo date: ' + machine.schedule_stop_machine?.date_end + 
-                                '\nShift: ' + machine.schedule_stop_machine?.shift + 
-                                '\nReason: ' + machine.schedule_stop_machine?.content"
-              [tooltipDisabled]="!machine.schedule_stop_machine"
-              [tooltipStyleClass]="'custom-tooltip'"
-              [attr.cx]="machine.x + 60"
-              [attr.cy]="machine.y + 20"
-              [attr.fill]="machine.schedule_stop_machine?'#ccc':getPerformanceColor(machine.performance)"
-              class="machine-ellipse"
-              (click)="userPermissions.includes(11)&&inputDowntime(machine)"
+                                            '\nTo date: ' + machine.schedule_stop_machine?.date_end + 
+                                            '\nShift: ' + machine.schedule_stop_machine?.shift + 
+                                            '\nReason: ' + machine.schedule_stop_machine?.content"
+                        [tooltipDisabled]="!machine.schedule_stop_machine"
+                        [tooltipStyleClass]="'custom-tooltip'" 
+                        [attr.cx]="machine.x + 65"
+                        [attr.cy]="machine.y + 15"
+                        [attr.fill]="machine.schedule_stop_machine?'#ccc':getPerformanceColor(machine.status)"
+                        class="machine-ellipse"
+                        (click)="userPermissions.includes(11)&&inputDowntime(machine)"
             />
             <text [pTooltip]="'Stop machine\nFrom date: ' + machine.schedule_stop_machine?.date_start + 
-                              '\nTo date: ' + machine.schedule_stop_machine?.date_end +
-                              '\nShift: ' + machine.schedule_stop_machine?.shift +  
-                              '\nReason: ' + machine.schedule_stop_machine?.content"
+                                        '\nTo date: ' + machine.schedule_stop_machine?.date_end +
+                                        '\nShift: ' + machine.schedule_stop_machine?.shift +  
+                                        '\nReason: ' + machine.schedule_stop_machine?.content"
               [tooltipDisabled]="!machine.schedule_stop_machine"
               [tooltipStyleClass]="'custom-tooltip'" 
               [attr.x]="machine.x + 65"
@@ -166,9 +175,10 @@ src/app/tierra2/tierra2.component.html
               class="performance-text"
               text-anchor="middle"
               (click)="userPermissions.includes(11)&&inputDowntime(machine)"
-            >
-              {{ machine.schedule_stop_machine? 'Stop':((machine.performance ?? 0) * 100 | number:'1.1-1' )+'%'}}
-            </text>
+              >
+              <!-- {{ machine.schedule_stop_machine? 'Stop':((machine.performance ?? 0) * 100 | number:'1.1-1' )}} -->
+              {{ machine.schedule_stop_machine? 'Stop':Math.floor((machine.performance ?? 0) * 100)}}
+              </text>
           </g>
 
           <!-- 🧱 Grid view for Edit Mode -->
@@ -195,10 +205,10 @@ src/app/tierra2/tierra2.component.html
               />
             </ng-container>
           </g>
+        </svg>
       </svg>
-    </svg>
-  </div>
-
-</div>
-
+      </div>
+      </div>
+      </div>
+    </p-fluid>
 <p-toast />

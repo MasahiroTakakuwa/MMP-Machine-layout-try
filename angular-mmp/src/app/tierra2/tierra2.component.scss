@@ -96,13 +96,13 @@
 
 .machine-ellipse {
   rx: 70;
-  ry: 40;
+  ry: 70;
   stroke: black;
   stroke-width: 0;
 }
 
 .performance-text {
-  font-size: 40px;
+  font-size: 65px;
   fill: black;
   font-weight: regular;
   text-anchor: middle;
@@ -111,4 +111,19 @@
 .performance-text:hover {
   cursor: pointer;
   fill: #ffffff;
+}
+
+::ng-deep .custom-tooltip {
+  max-width: none !important; /* no limit width */
+  white-space: normal !important; /* allow line breaks */
+  width: auto !important; /* Width varies with content */
+}
+
+.center-text {
+  text-align: center;
+}
+
+::ng-deep .centered-table .p-datatable-thead > tr > th,
+::ng-deep .centered-table .p-datatable-tbody > tr > td{
+  font-size: 28px;
 }
