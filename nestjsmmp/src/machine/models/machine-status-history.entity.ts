@@ -36,6 +36,12 @@ export class MachineStatusHistory {
   // ✅ 🇻🇳 Phân loại thiết bị (VD: 40 = cuối line có counter)
   // ✅ 🇯🇵 設備の種類（例：40 = カウンター付きのライン終端）
 
+  @Column({ name: 'line_no'})
+  line_no: number;
+
+  @Column({ name: 'parts_name'})
+  parts_name: string;
+
   @Column({ name: 'status' })
   status: number;
   // ✅ 🇻🇳 Trạng thái hoạt động (1 = chạy, 0 = dừng)

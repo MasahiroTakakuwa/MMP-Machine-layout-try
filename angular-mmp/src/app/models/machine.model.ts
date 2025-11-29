@@ -43,5 +43,9 @@ export interface Machine {
   performance: number | null; // 🇻🇳 Hiệu suất máy (tính theo thời gian thực)
                               // 🇯🇵 機械のパフォーマンス（リアルタイムで算出）
 
+  line_no: number | null;     // 設備のラインNo
+  
+  parts_name: string | null;  // 製品名
+  
   schedule_stop_machine: any | null;
 }

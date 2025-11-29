@@ -129,3 +129,16 @@
 ::ng-deep .centered-table .p-datatable-tbody > tr > td{
   font-size: 28px;
 }
+
+.centered-table.p-datatable table {
+    table-layout: fixed !important;
+    width: 100% !important;
+}
+
+.centered-table.p-datatable td,
+.centered-table.p-datatable th {
+    white-space: nowrap;
+    overflow: hidden;               /* はみ出しを隠す */
+    text-overflow: ellipsis;        /* 省略記号 (…) を表示 */
+
+}

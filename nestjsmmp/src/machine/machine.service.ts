@@ -54,6 +54,8 @@ export class MachineService {
         'm.factory_type AS factory_type',
         'm.machine_no AS machine_no',
         'm.machine_type AS machine_type',
+        'm.line_no AS line_no',
+        'm.parts_name AS parts_name',
         'MAX(m.updated_at) AS last_updated',
         'MAX(m.status) AS status',
         'MAX(m.counter) AS counter',
@@ -103,6 +105,8 @@ export class MachineService {
           hour: now.getHours(),
           counter: row.counter,
           performance: parseFloat(performance.toFixed(4)),
+          line_no: row.line_no,
+          parts_name: row.parts_name,
           // ✅ Làm tròn performance đến 4 chữ số thập phân
           // ✅ パフォーマンスを小数点以下4桁までに丸める
           schedule_stop_machine: dataScheduleStopMachine.find(e=> e.machine_status_history_id==row.id)||null  //match schedule for each machine
@@ -121,6 +125,9 @@ export class MachineService {
           hour: null,
           counter: null,
           performance: null,
+          line_no: null,
+          parts_name: null,
+
         };
       }
     });
