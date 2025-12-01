@@ -152,11 +152,13 @@ src/app/tierra/tierra.component.html
                         <!-- If there is schedule stop machine, the ellipse will filled by grey color -->
                         <!-- There is click event to show dialog input schedule stop machine -->
                         <!-- user có quyền số 11 có thể click mở dialog-->
-                        <ellipse [pTooltip]="'Stop machine\nFrom date: ' + machine.schedule_stop_machine?.date_start + 
+                        <ellipse [pTooltip]="'ライン番号: ' + machine.line_no +
+                                            '\n品番: ' + machine.parts_name +
+                                            '\n設備停止\nFrom date: ' + machine.schedule_stop_machine?.date_start + 
                                             '\nTo date: ' + machine.schedule_stop_machine?.date_end + 
                                             '\nShift: ' + machine.schedule_stop_machine?.shift + 
                                             '\nReason: ' + machine.schedule_stop_machine?.content"
-                        [tooltipDisabled]="!machine.schedule_stop_machine"
+                        [tooltipDisabled]="false"
                         [tooltipStyleClass]="'custom-tooltip'" 
                         [attr.cx]="machine.x + 65"
                         [attr.cy]="machine.y + 15"
@@ -164,11 +166,13 @@ src/app/tierra/tierra.component.html
                         class="machine-ellipse"
                         (click)="userPermissions.includes(11)&&inputDowntime(machine)"
                         />
-                        <text [pTooltip]="'Stop machine\nFrom date: ' + machine.schedule_stop_machine?.date_start + 
-                                        '\nTo date: ' + machine.schedule_stop_machine?.date_end +
-                                        '\nShift: ' + machine.schedule_stop_machine?.shift +  
-                                        '\nReason: ' + machine.schedule_stop_machine?.content"
-                        [tooltipDisabled]="!machine.schedule_stop_machine"
+                        <text [pTooltip]="'ライン番号: ' + machine.line_no +
+                                            '\n品番: ' + machine.parts_name +
+                                            '\n設備停止\nFrom date: ' + machine.schedule_stop_machine?.date_start + 
+                                            '\nTo date: ' + machine.schedule_stop_machine?.date_end + 
+                                            '\nShift: ' + machine.schedule_stop_machine?.shift + 
+                                            '\nReason: ' + machine.schedule_stop_machine?.content"
+                        [tooltipDisabled]="false"
                         [tooltipStyleClass]="'custom-tooltip'" 
                         [attr.x]="machine.x + 65"
                         [attr.y]="machine.y + 35"
@@ -177,8 +181,9 @@ src/app/tierra/tierra.component.html
                         (click)="userPermissions.includes(11)&&inputDowntime(machine)"
                         >
                         <!-- {{ machine.schedule_stop_machine? 'Stop':((machine.performance ?? 0) * 100 | number:'1.1-1' )}} -->
-                        {{ machine.schedule_stop_machine? 'Stop':Math.floor((machine.performance ?? 0) * 100)}}
-                        </text>
+                        <!-- {{ machine.schedule_stop_machine? 'Stop':Math.floor((machine.performance ?? 0) * 100)}} -->
+                        {{ machine.schedule_stop_machine? 'Stop':machine.line_no ?? 0}}
+                      </text>
                     </g>
 
                   <!-- 🧱 Grid view for Edit Mode -->
