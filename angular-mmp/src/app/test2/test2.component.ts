@@ -34,17 +34,23 @@ export class Test2 implements OnInit, OnDestroy {
     lineCount: number = 0;
     runningCount: number = 0;
     stoppingCount: number = 0;
+    abnormalstop: number = 0;
     planningstop: number = 0;
+    sumCount: number = this.lineCount+this.runningCount+this.stoppingCount+this.abnormalstop+this.planningstop;
 
     // p-tableの初期設定
     columns = [{ field: 'name', StyleClass:'center-text' }];
     items = [
-    { name: '稼働中' },
+    { name: '稼働' },
     { name: this.runningCount },
-    { name: '停止中' },
+    { name: '停止' },
     { name: this.stoppingCount },
-    { name: '計画停止中' },
-    { name: this.planningstop }
+    { name: '計画停止' },
+    { name: this.planningstop },
+    { name: '4h以上停止'},
+    { name: this.abnormalstop },
+    { name: 'ライン合計'},
+    { name: this.sumCount }
     ];
 
     subscription: Subscription;
@@ -167,6 +173,14 @@ export class Test2 implements OnInit, OnDestroy {
         this.items[1].name = colorCounts['#84ff00ff'] || 0;
         this.items[3].name = colorCounts['#ff0000ff'] || 0;
         this.items[5].name = colorCounts['#ccc'] || 0;
+        this.items[7].name = colorCounts['#9c27b0'] || 0;
+        
+        // ✅ 合計を計算して items[9].name に設定
+        this.items[9].name =
+          (this.items[1].name || 0) +
+          (this.items[3].name || 0) +
+          (this.items[5].name || 0) +
+          (this.items[7].name || 0);
 
       },
         

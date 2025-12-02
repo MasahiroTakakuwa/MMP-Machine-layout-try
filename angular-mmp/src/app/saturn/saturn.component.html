@@ -80,22 +80,27 @@ src/app/saturn/saturn.component.html
   <div class="w-full h-full overflow-auto" style="position: relative;z-index: 1;">
         <div style="position: absolute; top: 0; left: 0;z-index: 2;" class="ml-5 mt-5">
         <h6>設備状態(Saturn)</h6>
-        <div class="flex gap-2 mb-2">
-            <span style="background-color: #84ff00ff;padding: 16px;"></span>
-            <span style="font-size: 24px;">稼働中</span>
-        </div>
-        <div class="flex gap-2 mb-2">
-            <span style="background-color: #ff0000ff;padding: 16px;"></span>
-            <span style="font-size: 24px;">停止中</span>
-        </div>
-        <div class="flex gap-2 mb-2">
-            <span style="background-color: #ccc;padding: 16px;"></span>
-            <span style="font-size: 24px;">計画停止中</span>
-        </div>
-        <div class="flex gap-2 mb-2">
-            <span style="font-size: 24px;">数値：当日稼働率</span>
-        </div>
-        
+            <div class="flex gap-2 mb-2">
+                <span style="font-size: 28px;">数字：製品別ラインNo.<br>文字：設備名</span>
+            </div>
+            <p></p>
+            <div class="flex gap-2 mb-2">
+                <span style="background-color: #84ff00ff;padding: 16px;"></span>
+                <span style="font-size: 28px;">稼働中</span>
+            </div>
+            <div class="flex gap-2 mb-2">
+                <span style="background-color: #ff0000ff;padding: 16px;"></span>
+                <span style="font-size: 28px;">停止中</span>
+            </div>
+            <div class="flex gap-2 mb-2">
+                <span style="background-color: #ccc;padding: 16px;"></span>
+                <span style="font-size: 28px;">計画停止中</span>
+            </div>
+            <div class="flex gap-2 mb-2">
+                <span style="background-color: #f97000;padding: 16px;"></span>
+                <span style="font-size: 28px;">4h以上停止中</span>
+            </div>
+                    
         </div>
     <svg
       viewBox="0 0 3840 2400"

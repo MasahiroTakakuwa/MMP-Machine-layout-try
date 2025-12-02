@@ -125,5 +125,23 @@
 
 ::ng-deep .centered-table .p-datatable-thead > tr > th,
 ::ng-deep .centered-table .p-datatable-tbody > tr > td{
-  font-size: 28px;
+  font-size: 20px;
 }
+
+.centered-table.p-datatable table {
+    table-layout: fixed !important;
+    width: 100% !important;
+}
+
+.centered-table.p-datatable td,
+.centered-table.p-datatable th {
+    white-space: nowrap;
+    overflow: hidden;               /* はみ出しを隠す */
+    text-overflow: ellipsis;        /* 省略記号 (…) を表示 */
+
+}
+
+.flex.gap-2.mb-2:empty {
+    height: 700px; /* 改行分の高さ */
+}
+

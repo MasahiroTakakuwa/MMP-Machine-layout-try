@@ -52,17 +52,23 @@ export class SaturnComponent implements OnInit, OnDestroy {
     lineCount: number = 0;
     runningCount: number = 0;
     stoppingCount: number = 0;
+    abnormalstop: number = 0;
     planningstop: number = 0;
+    sumCount: number = this.lineCount+this.runningCount+this.stoppingCount+this.abnormalstop+this.planningstop;
 
     // p-tableの初期設定
     columns = [{ field: 'name', StyleClass:'center-text' }];
     items = [
-    { name: '稼働中' },
+    { name: '稼働' },
     { name: this.runningCount },
-    { name: '停止中' },
+    { name: '停止' },
     { name: this.stoppingCount },
-    { name: '計画停止中' },
-    { name: this.planningstop }
+    { name: '計画停止' },
+    { name: this.planningstop },
+    { name: '4h以上停止'},
+    { name: this.abnormalstop },
+    { name: 'ライン合計'},
+    { name: this.sumCount }
     ];
 
   subscription: Subscription;
@@ -183,6 +189,14 @@ onWheel(event: WheelEvent): void {
         this.items[1].name = colorCounts['#84ff00ff'] || 0;
         this.items[3].name = colorCounts['#ff0000ff'] || 0;
         this.items[5].name = colorCounts['#ccc'] || 0;
+        this.items[7].name = colorCounts['#f97000'] || 0;
+        
+        // ✅ 合計を計算して items[9].name に設定
+        this.items[9].name =
+          (this.items[1].name || 0) +
+          (this.items[3].name || 0) +
+          (this.items[5].name || 0) +
+          (this.items[7].name || 0);
 
       },
         
@@ -213,7 +227,7 @@ onWheel(event: WheelEvent): void {
       case 0:   return '#ff0000ff';   // ⛔ STOP: đỏ - 停止
       case 3:   return '#ff9800';     // 🔧 MAINTENANCE: cam - メンテナンス
       case 4:   return '#2196f3';     // 💤 IDLE: xanh dương - 待機中
-      case 5:   return '#9c27b0';     // ⚠️ WARNING: tím - 警告
+      case 5:   return '#f97000';     // ⚠️ WARNING: tím - 警告
       default:  return '#9e9e9e';     // ❓ Không xác định - 不明
     }
   }
