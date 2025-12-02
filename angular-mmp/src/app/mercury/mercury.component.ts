@@ -192,7 +192,7 @@ export class MercuryComponent implements OnInit, OnDestroy {
         this.items[3].name = colorCounts['#ff0000ff'] || 0;
         this.items[5].name = colorCounts['#ccc'] || 0;
         this.items[7].name = colorCounts['#f97000'] || 0;
-        
+                
         // ✅ 合計を計算して items[9].name に設定
         this.items[9].name =
           (this.items[1].name || 0) +
