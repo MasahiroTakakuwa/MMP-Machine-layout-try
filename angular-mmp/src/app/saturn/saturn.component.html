@@ -178,11 +178,22 @@ src/app/saturn/saturn.component.html
                                             '\nReason: ' + machine.schedule_stop_machine?.content"
                         [tooltipDisabled]="false"
                         [tooltipStyleClass]="'custom-tooltip'" 
-                        [attr.x]="machine.x + 65"
-                        [attr.y]="machine.y + 15"
-                        class="performance-text"
+                        [attr.x]="machine.x + 65"                        
+                        [attr.y]="
+                                  machine.schedule_stop_machine
+                                    ? machine.y + 15
+                                    : ((machine.line_no || '').length <= 2 ? machine.y + 35 : machine.y + 0)
+                                "
+
                         text-anchor="middle"
                         (click)="userPermissions.includes(11)&&inputDowntime(machine)"
+                        class="performance-text"
+                        [style.fontSize.px]="
+                          machine.schedule_stop_machine
+                            ? 40
+                            : (((machine.line_no || '').length <= 2) ? 50 : 36)
+                        "
+
                         >
                         <!-- {{ machine.schedule_stop_machine? 'Stop':((machine.performance ?? 0) * 100 | number:'1.1-1' )}} -->
                         <!-- {{ machine.schedule_stop_machine? 'Stop':Math.floor((machine.performance ?? 0) * 100)}} -->
