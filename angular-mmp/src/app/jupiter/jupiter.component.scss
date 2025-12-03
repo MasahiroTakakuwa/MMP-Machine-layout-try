@@ -102,10 +102,11 @@
 }
 
 .performance-text {
-  font-size: 55px;
+  font-size: 38px;
   fill: black;
   font-weight: regular;
   text-anchor: middle;
+  white-space: pre-line; // 改行(\n)を有効化
 }
 
 .performance-text:hover {
@@ -162,3 +163,6 @@
 
 }
 
+.line-no {
+  white-space: pre-line; // 改行文字(\n)を有効にする
+}

@@ -71,6 +71,11 @@ export class JupiterComponent implements OnInit, OnDestroy {
     { name: this.sumCount }
     ];
 
+    // 鍛造設備の改行追加(半角スペースを\nに変換)
+    replaceSpace(value: string | null): string {
+      return value ? value.replace(/ /g, '\n') : '';
+    }
+
     subscription: Subscription;
     constructor( //declare service used in this component
       private layoutService: LayoutService,

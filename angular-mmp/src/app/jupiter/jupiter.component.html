@@ -180,14 +180,25 @@ src/app/jupiter/jupiter.component.html
             [tooltipDisabled]="false"
             [tooltipStyleClass]="'custom-tooltip'" 
             [attr.x]="machine.x + 65"
-            [attr.y]="machine.y + 35"
+            [attr.y]="machine.y + 10"
             class="performance-text"
             text-anchor="middle"
             (click)="userPermissions.includes(11)&&inputDowntime(machine)"
             >
             <!-- {{ machine.schedule_stop_machine? 'Stop':((machine.performance ?? 0) * 100 | number:'1.1-1' )}} -->
             <!-- {{ machine.schedule_stop_machine? 'Stop':Math.floor((machine.performance ?? 0) * 100)}} -->
-            {{ machine.schedule_stop_machine? 'Stop':machine.line_no ?? 0}}
+            <!-- {{ machine.schedule_stop_machine? 'Stop': replaceSpace(machine.line_no) }} -->
+
+            
+          <ng-container *ngIf="!machine.schedule_stop_machine">
+              <ng-container *ngFor="let part of (machine.line_no || '').split(' '); let i = index">
+                <tspan [attr.x]="machine.x + 65" [attr.dy]="i === 0 ? 0 : 45">{{ part }}</tspan>
+              </ng-container>
+            </ng-container>
+            <ng-container *ngIf="machine.schedule_stop_machine">
+              <tspan>{{ 'Stop' }}</tspan>
+            </ng-container>
+
           </text>
           </g>
 

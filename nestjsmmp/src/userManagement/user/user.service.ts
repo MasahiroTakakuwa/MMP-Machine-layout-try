@@ -328,13 +328,13 @@ export class UserService extends AbstractService {
         // JP: アクセストークンとリフレッシュトークンをHttpOnlyクッキーで送信します
         response.cookie('jwtmmpmachinelayout', accessToken, {
             httpOnly: true,
-            secure: true,
+            secure: false,
             sameSite: 'lax',
             maxAge: 30 * 60 * 1000,
         })
         response.cookie('refresh_mmpmachinelayout', refreshToken, {
             httpOnly: true,
-            secure: true,
+            secure: false,
             sameSite: 'lax',
             maxAge: 7 * 24 * 60 * 60 * 1000,
         });
@@ -425,13 +425,13 @@ export class UserService extends AbstractService {
 
         response.cookie('jwtmmpmachinelayout', accessToken, {
             httpOnly: true,
-            secure: true,
+            secure: false,
             sameSite: 'lax',
             maxAge: 30 * 60 * 1000, // 30m
         });
         response.cookie('refresh_mmpmachinelayout', newRefresh, {
             httpOnly: true,
-            secure: true,
+            secure: false,
             sameSite: 'lax',
             maxAge: 7 * 24 * 60 * 60 * 1000, // 7d
         });

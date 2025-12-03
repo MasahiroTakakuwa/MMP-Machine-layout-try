@@ -43,7 +43,7 @@ export interface Machine {
   performance: number | null; // 🇻🇳 Hiệu suất máy (tính theo thời gian thực)
                               // 🇯🇵 機械のパフォーマンス（リアルタイムで算出）
 
-  line_no: number | null;     // 設備のラインNo
+  line_no: string | null;     // 設備のラインNo
   
   parts_name: string | null;  // 製品名
   
