@@ -16,6 +16,7 @@ import { AccountManagement } from './app/pages/account-management/accountManagem
 // import { Test } from './app/test/test.component';
 // import { Test2 } from './app/test2/test2.component';
 import { PlanComponent } from './app/plan/plan.component';
+import { KpiComponent } from './app/kpi/kpi.component';
 
 export const appRoutes: Routes = [
     {
@@ -39,6 +40,8 @@ export const appRoutes: Routes = [
             { path: 'general-information', component: GeneralInformation },
             { path: 'account-management', component: AccountManagement },
             { path: 'plan', component: PlanComponent},
+            { path: 'kpi', component: KpiComponent},
+
             // { path: 'test', component: Test},
             // { path: 'test2', component: Test2},
 

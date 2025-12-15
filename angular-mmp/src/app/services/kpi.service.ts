@@ -12,20 +12,18 @@ import { environment } from '../../environments/environment';
 })
 export class KpiService {
   apiURL=environment.apiURL
-
   constructor(private http: HttpClient) {}
 
-  // 工場IDを引数にして品番一覧を取得する関数
-  getPartsNo(factory: number =0): Observable<Kpi[]>{
-    // Nestjsの該当するservice.tsを確認
-    const url = `${this.apiURL}/kpi?factory=${factory}`;
+  // 工場IDと加工方法を引数にして品番一覧を取得
+  getPartsNo_type(factory: number =0,type: number =0): Observable<Kpi[]>{
+    const url = `${this.apiURL}/kpi?factory=${factory}&type=${type}`;
     return this.http.get<any>(url).pipe(
         map((res) => res as Kpi[])
     );
   }
 
-  getLineNo(factory: number =0,parts_no: string =''): Observable<any>{
-    const url = `${this.apiURL}/kpi/lineno?factory=${factory}&parts_no=${parts_no}`;
+  getLineNo_type(factory: number =0,parts_no: string ='',type: number =0): Observable<any>{
+    const url = `${this.apiURL}/kpi/lineno?factory=${factory}&parts_no=${parts_no}&type=${type}`;
     return this.http.get<any>(url).pipe(
         map((res) => res as any)    
     );
@@ -37,4 +35,21 @@ export class KpiService {
         map((res) => res as any)    
     );
   }
+
+  getForgingKpi(factory: number =0,parts_no: string='',machine_name: string='', date: string=''): Observable<any>{
+    const url = `${this.apiURL}/kpi/forging?factory=${factory}&parts_no=${parts_no}&machine_name=${machine_name}&date=${date}`;
+    return this.http.get<any>(url).pipe(
+        map((res) => res as any)    
+    );
+    
+  }
+
+  getMachiningKPI(factory: number =0,parts_no: string='',line_no: string='', date: string=''): Observable<any>{
+    const url = `${this.apiURL}/kpi/machining?factory=${factory}&parts_no=${parts_no}&line_no=${line_no}&date=${date}`;
+    return this.http.get<any>(url).pipe(
+        map((res) => res as any)    
+    );
+    
+  }
+
 }
