@@ -6,8 +6,10 @@ import { LayoutService } from '../layout/service/layout.service';
 import { KpiService } from '../services/kpi.service';
 
 import { SelectButtonModule } from 'primeng/selectbutton';
+import { SelectButtonChangeEvent } from 'primeng/selectbutton';
 import { FormsModule } from '@angular/forms';
 import { DropdownItem, DropdownModule } from 'primeng/dropdown';
+import { ToggleButtonModule } from 'primeng/togglebutton';
 
 // interfaceはクラスの外側に記述する事
 export interface FactoryOption {
@@ -35,7 +37,7 @@ export interface Kpi {
 @Component({
     selector: 'app-test',
     standalone: true,
-    imports: [ChartModule,DropdownModule,FluidModule,FormsModule,SelectButtonModule],
+    imports: [ChartModule,DropdownModule,FluidModule,FormsModule,SelectButtonModule,ToggleButtonModule],
     templateUrl: './test.component.html',
     styleUrls: ['./test.component.scss']
 
@@ -60,6 +62,10 @@ export class Test implements OnInit, OnDestroy{
     selectButtonValue: FactoryOption = this.selectButtonValues[1];
     selectedNode: any = null;
 
+    // toggleswitchの初期設定
+    toggleValue: boolean = true;
+    toggleDisabled: boolean = false;
+
     // dropdownlistの初期設定
     dropdownValues:  Dropdownitem[] = [];
     dropdownValue: Dropdownitem | null = null;
@@ -83,11 +89,23 @@ export class Test implements OnInit, OnDestroy{
     }
     // 初期設定
     ngOnInit() {
-        this.loadDropdownItems(this.selectButtonValue.code);
+        this.loadDropdownItems(this.selectButtonValue.code);       
+        // 初期選択に基づいてトグルの状態・可否を反映
+        this.updateToggleState(this.selectButtonValue.code);
+
     }
     // 工場区分変更後
-    onFactoryChange() {
-        this.loadDropdownItems(this.selectButtonValue.code)
+    onFactoryChange(event: SelectButtonChangeEvent) {
+        const selected = event.value as FactoryOption | undefined;
+        if (!selected) {
+            // クリア時や未選択時の挙動を定義（必要なら）
+            // 例: this.toggleDisabled = true; this.toggleValue = false;
+            return;
+        }
+        this.selectButtonValue = selected;
+        this.loadDropdownItems(this.selectButtonValue.code);
+        this.updateToggleState(selected.code);
+
     }
     // 品番選択後
     onPartsNoSelect() {        
@@ -96,7 +114,34 @@ export class Test implements OnInit, OnDestroy{
         }
 
     }
-    
+        
+  // 工場区分によって切削・鍛造が自動で変化
+  private updateToggleState(code: number): void {
+    if (code === 1) {
+      // code=1 → false に固定、以降変更不可
+      this.toggleValue = false;
+      this.toggleDisabled = true;
+    } else if (code === 5) {
+      // code=5 → 変更可能（値は強制しない）
+      this.toggleDisabled = false;
+      // ここで値を初期化したい場合は以下を使う（任意）
+      // this.toggleValue = this.toggleValue; // 現状維持
+    } else {
+      // その他 → true に固定、以降変更不可
+      this.toggleValue = true;
+      this.toggleDisabled = true;
+    }
+  }
+
+  // ユーザーがトグルを押した時のハンドラ（必要なら）
+  onToggleChange(val: boolean): void {
+    // code=5 以外では disabled なので変更イベントは来ない想定
+    // ログ出力や他処理があればここに
+    // console.log('toggle changed:', val);
+  }
+
+
+
     // ビュー初期設定後処理
     ngAfterViewInit() {
         this.initCharts();
@@ -114,11 +159,35 @@ export class Test implements OnInit, OnDestroy{
             labels: this.labels_day,
             datasets: [
                 {
+                    type: 'line',
+                    label: '稼動率',
+                    backgroundColor: '#ffe102ff',
+                    borderColor: '#ffe102ff',
+                    data: [0.87, 0.82, 0.76, 0.88, 0.85],
+                    yAxisID: 'y-axis-2'
+                },
+                {
+                    type: 'line',
+                    label: '目標稼動率',
+                    backgroundColor: '#ff0202ff',
+                    borderColor: '#ff0202ff',
+                    data: [0.85, 0.85, 0.85, 0.85, 0.85],
+                    yAxisID: 'y-axis-2'
+                },
+                {
+                    type: 'line',
+                    label: '可動率',
+                    backgroundColor: '#0022ffff',
+                    borderColor: '#0022ffff',
+                    data: [1.02, 0.97, 0.91, 1.03, 1.0],
+                    yAxisID: 'y-axis-2'
+                },
+                {
                     type: 'bar',
                     label: '計画',
                     backgroundColor: '#42A5F5',
                     borderColor: '#42A5F5',
-                    data: [65, 59, 80, 81, 56, 55, 40],
+                    data: [6000, 6000, 6000, 6000, 6000, 0, 0],
                     yAxisID: 'y-axis-1'
                 },
                 {
@@ -126,25 +195,10 @@ export class Test implements OnInit, OnDestroy{
                     label: '実績',
                     backgroundColor: '#66BB6A',
                     borderColor: '#66BB6A',
-                    data: [60, 60, 60, 60, 60, 60, 60],
+                    data: [6100, 5800, 5500, 6200, 6000, 0, 0],
                     yAxisID: 'y-axis-1'
-                },
-                {
-                    type: 'line',
-                    label: '計画累積',
-                    backgroundColor: '#42A5F5',
-                    borderColor: '#42A5F5',
-                    data: [60, 60, 60, 60, 60, 60, 60],
-                    yAxisID: 'y-axis-2'
-                },
-                {
-                    type: 'line',
-                    label: '実績累積',
-                    backgroundColor: '#66BB6A',
-                    borderColor: '#66BB6A',
-                    data: [60, 60, 60, 60, 60, 60, 60],
-                    yAxisID: 'y-axis-2'
                 }
+                
             ]
         };
 
@@ -211,14 +265,14 @@ export class Test implements OnInit, OnDestroy{
                 type: 'bar',
                 label: '工程内不良',
                 backgroundColor: '#42A5F5',
-                data: [0.25, 0.19, 0.40],
+                data: [0.25, 0.19, 0.40, 0.1, 0.3],
                 yAxisID: 'y-axis-1'
                 },
                 {
                 type: 'bar',
                 label: '外観不良',
                 backgroundColor: '#66BB6A',
-                data: [0.28, 0.28, 0.20],
+                data: [0.28, 0.28, 0.20, 0.2, 0.2],
                 yAxisID: 'y-axis-1'
                 },
                 {
@@ -370,6 +424,9 @@ export class Test implements OnInit, OnDestroy{
         this.createChartData(factoryCode,partsCode)
         
     }
+
+
+
 
     // ブラウザ終了時
     ngOnDestroy() {

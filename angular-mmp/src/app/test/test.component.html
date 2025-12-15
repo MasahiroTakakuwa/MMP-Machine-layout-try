@@ -5,16 +5,18 @@
                 <div class="flex align-items-center gap-2">
                     <div class="font-semibold text-xl">工場選択</div>
                     <p-selectbutton [(ngModel)]="selectButtonValue" [options]="selectButtonValues" optionLabel="name"
-                    (onChange)="onFactoryChange()" />
+                    (onChange)="onFactoryChange($event)" />
+                </div>
+                <div class="flex align-items-center gap-2">
+                    <div class="font-semibold text-xl">加工切替</div>
+                    <p-togglebutton [(ngModel)]="toggleValue" [disabled]="toggleDisabled" onLabel="切削" offLabel="鍛造" [style]="{ width: '10em' }" />
                 </div>
                 
                 <div class="flex align-items-center gap-2">
                     <div class="font-semibold text-xl">品番</div>
                     <p-dropdown [(ngModel)]="dropdownValue" [options]="dropdownValues" optionLabel="name" placeholder="Select"
-                    (onChange)="onPartsNoSelect()" />
-                    
+                    (onChange)="onPartsNoSelect()" />                    
                 </div>
-
                 <div class="flex align-items-center gap-2">
                     <div class="font-semibold text-xl">設備</div>
                     <p-dropdown [(ngModel)]="dropdown2Value" [options]="dropdown2Values" optionLabel="name" placeholder="Select" />

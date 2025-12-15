@@ -1,0 +1,66 @@
+<p-toast position="top-right" key="plan" appendTo="body"></p-toast>
+
+<div class="card">
+      <div class="font-semibold text-xl mb-4">Excel解析</div>
+      <p-fileupload
+        name="excel[]"
+        mode="advanced"
+        accept=".xlsx,.xls"
+        [customUpload]="true"
+        (uploadHandler)="handleExcelUpload($event)"
+        (onClear)="clear()">
+        <ng-template #empty>
+          <div>Excelファイルをドラッグ＆ドロップ、または選択してください。</div>
+        </ng-template>
+      </p-fileupload>
+    </div>
+
+
+<div class="card mt-6" *ngIf="rows.length && previewType">
+  <div class="font-semibold text-xl mb-4">
+    プレビュー（{{ previewType === 'forging' ? '鍛造：C/D結合行 → K〜AO' : '切削：F列に「切削」含む行 → A/E取得' }}）
+  </div>
+
+  <p-table [value]="rows" [responsiveLayout]="'scroll'">
+    <ng-container [ngSwitch]="previewType">
+
+      <!-- 鍛造 -->
+      <ng-template pTemplate="header" *ngSwitchCase="'forging'">
+        <tr>
+          <th style="min-width: 90px">設備</th>
+          <th style="min-width: 140px">品番</th>
+          <th *ngFor="let col of headersKtoAO">{{ col }}</th>
+        </tr>
+      </ng-template>
+      <ng-template pTemplate="body" let-row *ngSwitchCase="'forging'">
+        <tr>
+          <td>{{ row.equipmentName || '(空)' }}</td>
+          <td>{{ row.cdValue || '(空)' }}</td>
+          <td *ngFor="let v of row.valuesKtoAO">{{ v }}</td>
+        </tr>
+      </ng-template>
+
+      <!-- 切削 -->
+      <ng-template pTemplate="header" *ngSwitchCase="'machining'">
+        <tr>
+          <th style="min-width: 90px">工場区分</th>
+          <th style="min-width: 120px">品番</th>
+          <th style="min-width: 120px">受注数稼働日当たり</th>
+        </tr>
+      </ng-template>
+      <ng-template pTemplate="body" let-row *ngSwitchCase="'machining'">
+        <tr>
+          <td>{{ row.factoryDivision }}</td>
+          <td>{{ row.A ?? '(空)' }}</td>
+          <td>{{ row.E ?? '(空)' }}</td>
+        </tr>
+      </ng-template>
+
+    </ng-container>
+  </p-table>
+
+  <div class="mt-4 flex gap-2">
+    <p-button label="クリア" severity="danger" (onClick)="clear()"></p-button>
+    <p-button label="バックエンドへ送信" icon="pi pi-send" (onClick)="sendToBackend()"></p-button>
+  </div>
+</div>
