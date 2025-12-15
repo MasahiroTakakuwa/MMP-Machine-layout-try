@@ -10,6 +10,8 @@ import { InputStopMachineModule } from './input-stop-machine/input-stop-machine.
 import { MachineModule } from './machine/machine.module';
 import { typeAsyncOrmMMPMachineConfig } from './configs/configuration-machine.mmp.config';
 import { KpiModule } from './kpi/kpi.module';
+import { PlanModule } from './plan/plan.module';
+
 @Module({
   imports: [
     ConfigModule.forRoot(
@@ -26,7 +28,8 @@ import { KpiModule } from './kpi/kpi.module';
     LogsModule,
     InputStopMachineModule,
     MachineModule,
-    KpiModule
+    KpiModule,
+    PlanModule
   ],
   providers: [],
 })
