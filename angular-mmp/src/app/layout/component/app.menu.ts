@@ -13,7 +13,21 @@ import { AppMenuitem } from './app.menuitem';
             <li app-menuitem *ngIf="!item.separator" [item]="item" [index]="i" [root]="true"></li>
             <li *ngIf="item.separator" class="menu-separator"></li>
         </ng-container>
-    </ul> `
+    </ul> `,
+    styles: [`
+        /* メニュー全体の文字サイズ */
+        .layout-menu {
+        font-size: 16px;   /* ここをお好みのサイズに */
+        line-height: 1.6;
+        }
+
+        /* セパレーターなど補助テキスト */
+        .layout-menu .menu-separator {
+        font-size: 16px;
+        color: #999;
+        }
+    `]
+
 })
 export class AppMenu {
     model: MenuItem[] = [];

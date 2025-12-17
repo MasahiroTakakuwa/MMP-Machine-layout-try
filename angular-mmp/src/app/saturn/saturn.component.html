@@ -85,21 +85,25 @@ src/app/saturn/saturn.component.html
             </div>
             <p></p>
             <div class="flex gap-2 mb-2">
-                <span style="background-color: #84ff00ff;padding: 16px;"></span>
-                <span style="font-size: 28px;">稼働中</span>
-            </div>
-            <div class="flex gap-2 mb-2">
-                <span style="background-color: #ff0000ff;padding: 16px;"></span>
-                <span style="font-size: 28px;">停止中</span>
-            </div>
-            <div class="flex gap-2 mb-2">
-                <span style="background-color: #ccc;padding: 16px;"></span>
-                <span style="font-size: 28px;">計画停止中</span>
-            </div>
-            <div class="flex gap-2 mb-2">
-                <span style="background-color: #f97000;padding: 16px;"></span>
-                <span style="font-size: 28px;">4h以上停止中</span>
-            </div>
+                    <span style="background-color: #4f6fff;padding: 16px;"></span>
+                    <span style="font-size: 28px;">稼働中(目標以上)</span>
+                </div>
+                <div class="flex gap-2 mb-2">
+                    <span style="background-color: #84ff00ff;padding: 16px;"></span>
+                    <span style="font-size: 28px;">稼働中(目標未満)</span>
+                </div>
+                <div class="flex gap-2 mb-2">
+                    <span style="background-color: #ff8080;padding: 16px;"></span>
+                    <span style="font-size: 28px;">停止中</span>
+                </div>
+                <div class="flex gap-2 mb-2">
+                    <span style="background-color: #ff0000ff;padding: 16px;"></span>
+                    <span style="font-size: 28px;">4h以上停止中</span>
+                </div>
+                <div class="flex gap-2 mb-2">
+                    <span style="background-color: #ccc;padding: 16px;"></span>
+                    <span style="font-size: 28px;">計画停止中</span>
+                </div>
                     
         </div>
     <svg
@@ -167,7 +171,7 @@ src/app/saturn/saturn.component.html
                         [attr.cx]="machine.x + 65"
                         [attr.cy]="machine.y + 15"
                         [attr.fill]="machine.schedule_stop_machine?'#ccc':getPerformanceColor(machine.status)"
-                        class="machine-ellipse"
+                         [ngClass]="(machine.line_no || '').length <= 2 ? 'machine-ellipse' : 'machine-ellipse-formar'"
                         (click)="userPermissions.includes(11)&&inputDowntime(machine)"
                         />
                         <text [pTooltip]="'ライン番号: ' + machine.line_no +
@@ -191,7 +195,7 @@ src/app/saturn/saturn.component.html
                         [style.fontSize.px]="
                           machine.schedule_stop_machine
                             ? 40
-                            : (((machine.line_no || '').length <= 2) ? 50 : 36)
+                            : (((machine.line_no || '').length <= 2) ? 52 : 48)
                         "
 
                         >

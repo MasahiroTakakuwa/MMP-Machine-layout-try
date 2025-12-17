@@ -1,4 +1,29 @@
 
-::ng-deep .p-dropdown {
-  font-size: 20px; /* 全体のフォントサイズを統一 */
+/* 既存：ドロップダウンのサイズ調整 */
+:host ::ng-deep .p-dropdown {
+  font-size: 20px !important; /* 全体のフォントサイズを統一 */
+}
+
+/* ✅ ToggleButton：ラベルに直接当てる（最も確実） */
+:host ::ng-deep .p-togglebutton .p-button-label {
+  font-size: 20px !important;  /* テーマの .p-button の 1rem に勝つための保険 */
+  line-height: 1.2;
+}
+
+/* ✅ SelectButton：各ボタンのラベルに当てる */
+:host ::ng-deep .p-selectbutton .p-button .p-button-label {
+  font-size: 20px !important;
+  line-height: 1.2;
+}
+
+/* （任意）フォントサイズをボタン自体に適用したい場合は .p-button にも指定 */
+:host ::ng-deep .p-togglebutton.p-button,
+:host ::ng-deep .p-selectbutton .p-button {
+  font-size: 20px !important;
+}
+
+/* （任意）文字を大きくした分の高さ調整（詰まり対策） */
+:host ::ng-deep .p-togglebutton.p-button,
+:host ::ng-deep .p-selectbutton .p-button {
+  padding: 0.6rem 1rem;
 }

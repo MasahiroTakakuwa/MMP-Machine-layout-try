@@ -101,6 +101,13 @@
   stroke-width: 0;
 }
 
+.machine-ellipse-formar {
+  rx: 60;
+  ry: 60;
+  stroke: black;
+  stroke-width: 0;
+}
+
 .performance-text {
   // font-size: 40px;
   fill: black;
@@ -130,22 +137,26 @@
 }
 
 ::ng-deep .p-datatable-tbody tr:nth-child(1) {
-    background-color: #b0ffb0 !important;
+    background-color: #788cff !important;
 }
 
 ::ng-deep .p-datatable-tbody tr:nth-child(3) {
-    background-color: #ffb0b0 !important;
+    background-color: #b0ffb0 !important;
 }
 
 ::ng-deep .p-datatable-tbody tr:nth-child(5) {
-    background-color: #dadada !important;
+    background-color: #ffb0b0 !important;
 }
 
 ::ng-deep .p-datatable-tbody tr:nth-child(7) {
-    background-color: #ffb070 !important;
+    background-color: #fa5050 !important;
 }
 
 ::ng-deep .p-datatable-tbody tr:nth-child(9) {
+    background-color: #dadada !important;
+}
+
+::ng-deep .p-datatable-tbody tr:nth-child(11) {
     background-color: #aafeff !important;
 }
 

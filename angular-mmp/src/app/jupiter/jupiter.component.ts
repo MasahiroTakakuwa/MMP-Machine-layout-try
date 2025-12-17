@@ -50,6 +50,7 @@ export class JupiterComponent implements OnInit, OnDestroy {
     Math = Math;
     // カウント格納先の初期宣言
     lineCount: number = 0;
+    targetOver: number = 0;
     runningCount: number = 0;
     stoppingCount: number = 0;
     abnormalstop: number = 0;
@@ -59,14 +60,16 @@ export class JupiterComponent implements OnInit, OnDestroy {
     // p-tableの初期設定
     columns = [{ field: 'name', StyleClass:'center-text' }];
     items = [
-    { name: '稼働' },
+    { name: '稼働(目標以上)' },
+    { name: this.targetOver },
+    { name: '稼働(目標未満' },
     { name: this.runningCount },
     { name: '停止' },
     { name: this.stoppingCount },
-    { name: '計画停止' },
-    { name: this.planningstop },
     { name: '4h以上停止'},
     { name: this.abnormalstop },
+    { name: '計画停止' },
+    { name: this.planningstop },
     { name: 'ライン合計'},
     { name: this.sumCount }
     ];
@@ -191,17 +194,19 @@ onWheel(event: WheelEvent): void {
         // ✅ 表示色ごとにカウント
         const colorCounts = this.countColorsFromMachines(this.machinesType40);
         // 画面左の一覧内の数値を変更
-        this.items[1].name = colorCounts['#84ff00ff'] || 0;
-        this.items[3].name = colorCounts['#ff0000ff'] || 0;
-        this.items[5].name = colorCounts['#ccc'] || 0;
-        this.items[7].name = colorCounts['#f97000'] || 0;
-        
+        this.items[1].name = colorCounts['#4f6fff'] || 0;
+        this.items[3].name = colorCounts['#84ff00ff'] || 0;
+        this.items[5].name = colorCounts['#ff8080'] || 0;
+        this.items[7].name = colorCounts['#ff0000ff'] || 0;
+        this.items[9].name = colorCounts['#ccc'] || 0;
+
         // ✅ 合計を計算して items[9].name に設定
-        this.items[9].name =
+        this.items[11].name =
           (this.items[1].name || 0) +
           (this.items[3].name || 0) +
           (this.items[5].name || 0) +
-          (this.items[7].name || 0);
+          (this.items[7].name || 0) +
+          (this.items[9].name || 0);
 
       },
         
@@ -230,10 +235,11 @@ onWheel(event: WheelEvent): void {
     switch (status) {
       case 2:   return '#ccc';        // ❌ ERROR: xám - エラー
       case 1:   return '#84ff00ff';   // ✅ RUNNING: xanh lá - 稼働中
-      case 0:   return '#ff0000ff';   // ⛔ STOP: đỏ - 停止
+      case 0:   return '#ff8080';   // ⛔ STOP: đỏ - 停止
       case 3:   return '#ff9800';     // 🔧 MAINTENANCE: cam - メンテナンス
       case 4:   return '#2196f3';     // 💤 IDLE: xanh dương - 待機中
-      case 5:   return '#f97000';     // ⚠️ WARNING: tím - 警告
+      case 5:   return '#ff0000ff';   // ⚠️ WARNING: tím - 警告(4h以上停止)
+      case 6:   return '#4f6fff';     // 稼働中(目標稼働率以上)
       default:  return '#9e9e9e';     // ❓ Không xác định - 不明
     }
   }
