@@ -57,19 +57,17 @@ export class KpiService {
   async getLineNoSummary_type(factory: number,parts_no: string, type: number){
     // 鍛造
   if(type == 0){
-    //console.log(`forging`);
     const query = await this.ForgingRepo
       .createQueryBuilder('m')
       .select('m.machine_name AS machine_name')
       .groupBy('m.machine_name')
-      .where('m.factory_type = :factory', {factory})
-      .andWhere('m.parts_no = :parts_no',{parts_no});
+      .where('m.factory_type = :factory', {factory});
+      // .andWhere('m.parts_no = :parts_no',{parts_no});
       const result = await query.getRawMany();
-      return result;
+      return result;      
     }
   // 切削
   else if(type == 1){
-    //console.log(`machining`);
     const query = await this.MachiningRepo
       .createQueryBuilder('m')
       .select('m.line_no AS line_no')
@@ -78,7 +76,9 @@ export class KpiService {
       .andWhere('m.parts_no = :parts_no',{parts_no});
       const result = await query.getRawMany();
       return result;
+    
     }
+
   }
 
 // 指定の工場・品番の過去出来高を取得

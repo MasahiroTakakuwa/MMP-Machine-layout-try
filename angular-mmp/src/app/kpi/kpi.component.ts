@@ -192,6 +192,7 @@ export class KpiComponent implements OnInit, OnDestroy{
         this.updateToggleState(this.selectButtonValue.code);
 
     }
+    
     // 工場区分変更後
     onFactoryChange(event: SelectButtonChangeEvent) {
         const selected = event.value as FactoryOption | undefined;
@@ -378,12 +379,7 @@ export class KpiComponent implements OnInit, OnDestroy{
             });
         }
     }
-
-    // ビュー初期設定後処理
-    ngAfterViewInit() {
-        this.initCharts();
-
-    }
+ 
     // チャート初期設定
     initCharts() {
         const documentStyle = getComputedStyle(document.documentElement);
@@ -705,7 +701,6 @@ export class KpiComponent implements OnInit, OnDestroy{
                 type: 'bar',
                 label: '工程内不良',
                 backgroundColor: '#ff0000ff',
-                //data: [0.25, 0.19, 0.40, 0.1, 0.3],
                 yAxisID: 'y-axis-1'
                 },
                 
@@ -713,14 +708,12 @@ export class KpiComponent implements OnInit, OnDestroy{
                 type: 'bar',
                 label: '捨て打ち',
                 backgroundColor: '#b0b0b0ff',
-                //data: [0.28, 0.28, 0.20, 0.2, 0.2],
                 yAxisID: 'y-axis-1'
                 },
                 {
                 type: 'bar',
                 label: '段取り',
                 backgroundColor: '#fed70fff',
-                //data: [0.28, 0.28, 0.20, 0.2, 0.2],
                 yAxisID: 'y-axis-1'
                 }
                 
@@ -737,7 +730,6 @@ export class KpiComponent implements OnInit, OnDestroy{
                 type: 'bar',
                 label: '工程内不良',
                 backgroundColor: '#ff0000ff',
-                //data: [0.25, 0.19, 0.40, 0.1, 0.3],
                 yAxisID: 'y-axis-1'
                 },
                 
@@ -745,7 +737,6 @@ export class KpiComponent implements OnInit, OnDestroy{
                 type: 'bar',
                 label: '外観不良',
                 backgroundColor: '#66BB6A',
-                //data: [0.28, 0.28, 0.20, 0.2, 0.2],
                 yAxisID: 'y-axis-1'
                 },
                 // {
@@ -811,57 +802,92 @@ export class KpiComponent implements OnInit, OnDestroy{
     loadDropdownItems(factoryCode: number) {
         // 固定項目として全品番を宣言
         const fixedItem = {name: '全品番', code: 'all'}
-        //const fixedItem2 = {name: '鍛造品', code: '0'}
-        const type = this.toggleValue ? 1 : 0;              // 加工方法 1:切削　2:鍛造
+        const type = this.toggleValue ? 1 : 0;              // 加工方法 1:切削　0:鍛造
         // 加工方法で分岐
-        this.kpiService.getPartsNo_type(factoryCode,type).subscribe((items: Kpi[]) =>
+        if(type == 1){
+            this.kpiService.getPartsNo_type(factoryCode,type).subscribe((items: Kpi[]) =>
             {
                 const dynamicItems = items.map(item => ({
                     name: item.parts_no,
                     code: item.parts_no
                 }));
-                this.dropdownValues = [fixedItem, ...dynamicItems]
+                this.dropdownValues = [fixedItem, ...dynamicItems];
                                 
             });
+
+        }
+        else if(type == 0){
+            this.dropdownValues = [fixedItem];
+
+        }
         // 先頭のインデックスを固定項目に設定
         this.dropdownValue = null;
         
     }
 
-    // ラインNoドロップダウンリスト更新(品番選択後)
-    loadDropdownItems2(factoryCode: number,partsCode: string){
-    // 固定項目として全設備を宣言
-        const fixedItem = {name: '全ライン', code: 'all'}
-        const type = this.toggleValue ? 1 : 0;              // 加工方法 1:切削　2:鍛造
-        if (this.dropdownValue && this.dropdownValue.code !== undefined) {
-            if(this.dropdownValue.code === 'all'){
-                this.dropdown2Values = [fixedItem]
-            }
-
-            else{
-                this.kpiService.getLineNo_type(factoryCode,partsCode,type).subscribe((items:any[]) =>
-                {
-                    if(type ==0){
-                        const dynamicItems = items.map(item => ({
-                        name: item.machine_name,
-                        code: item.machine_name
-                        }));
-                        this.dropdown2Values = [fixedItem, ...dynamicItems]
-                    }
-                    else if(type ==1){
-                        const dynamicItems = items.map(item => ({
-                        name: item.line_no,
-                        code: item.line_no
-                        }));
-                        this.dropdown2Values = [fixedItem, ...dynamicItems]
-                    }
-                    
-                });
-            }
-            this.dropdown2Value = this.dropdown2Values[0];
-
+    loadDropdownItems2(factoryCode: number, partsCode: string) {
+    
+    // ここでは 0/1 に統一（例：1=切削, 0=鍛造）
+    const type = this.toggleValue ? 1 : 0;
+    type OptionItem = {name:string;code:string};
+    // 呼び出し前ガード
+    if (!this.dropdownValue || this.dropdownValue.code === undefined) {
+        // 必要なら初期化やログ
+        return;
+    }
+    // 'all' かつ切削の場合は固定項目のみ
+    if (this.dropdownValue.code === 'all' && type == 1) {
+        // 固定項目として全ラインを宣言
+        const fixedItem = { name: '全ライン', code: 'all' };
+        this.dropdown2Values = [fixedItem];
+        this.dropdown2Value = this.dropdown2Values[0]; // ここで確実にセット
+        return;
+    }
+    // それ以外の場合はAPI 呼び出し（items が null の場合に備えて正規化）
+    else{
+        // 固定項目として全設備を宣言
+        const fixedItem = { name: '全設備', code: 'all' };
+        this.kpiService.getLineNo_type(factoryCode, partsCode, type).subscribe({
+        next: (items: any[]) => {
+        const list = Array.isArray(items) ? items : [];
+        let dynamicItems: OptionItem[] = [];
+        if (type === 0) {
+            // 鍛造なら machine_name
+            dynamicItems = list.map(item => ({
+            name: item?.machine_name ?? '',
+            code: item?.machine_name ?? ''
+            }));
+        } else if (type === 1) {
+            // 切削なら line_no
+            dynamicItems = list.map(item => ({
+            name: item?.line_no ?? '',
+            code: item?.line_no ?? ''
+            }));
+        } else {
+            // 予期しない type のフォールバック
+            dynamicItems = [];
         }
-        
+        //   console.log(dynamicItems);
+        // 固定 + 動的
+        this.dropdown2Values = [fixedItem, ...dynamicItems];
+
+        // 先頭をデフォルト選択（配列が空でも fixedItem が入るため安全）
+        this.dropdown2Value = this.dropdown2Values[0];
+        },
+        error: (err) => {
+        console.error('getLineNo_type error:', err);
+        // エラー時も安全に初期化
+        this.dropdown2Values = [fixedItem];
+        this.dropdown2Value = this.dropdown2Values[0];
+        }
+    });
+    }
+    
+    }
+
+    // ビュー初期設定後処理
+    ngAfterViewInit() {
+        this.initCharts();
     }
 
     // ブラウザ終了時
