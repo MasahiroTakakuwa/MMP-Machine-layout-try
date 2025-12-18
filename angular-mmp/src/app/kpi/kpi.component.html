@@ -25,16 +25,33 @@
                     <p-dropdown [(ngModel)]="dropdown2Value" [options]="dropdown2Values" optionLabel="name" placeholder="Select" />
                 </div>
 
-                <div class="flex align-items-center gap-2">
+                <div class="flex align-items-center gap-20">
                     <p-button label="更新" (onClick)="displayCharts()"></p-button>
+                     <!-- <p-button label="テスト" (onClick)="displayResult()"></p-button> -->
+                     <!-- テスト用 -->
+                    <!-- 判定（〇=青 / ✖=赤） -->
+                    <div class="font-semibold text-4xl judge"
+                        [class.ok]="judge === '〇'"
+                        [class.ng]="judge === '✖'">
+                        判定：{{ judge || '-' }}
+                    </div>
+
+                    <!-- 差分（判定と同じ色） -->
+                    <div class="font-semibold text-4xl delta"
+                        [class.ok]="judge === '〇'"
+                        [class.ng]="judge === '✖'">
+                        差分：{{ delta || '-' }}
+                    </div>
+                    <!-- ここまで -->
                 </div>
            </div>
         </div>
     </div>
-            <!-- テスト用 -->
+            
+            
     <div class="col-span-12 xl:col-span-12">
         <div class="card">
-            <!-- ここまで -->
+            
             <div class="font-semibold text-2xl mb-2">生産実績</div>
             <p-chart type="bar" [data]="ProdChartData" [options]="ProdChartOptions" style="height: 550px;"></p-chart>
         </div>

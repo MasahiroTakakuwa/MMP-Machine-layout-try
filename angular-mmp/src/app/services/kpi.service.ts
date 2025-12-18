@@ -22,6 +22,7 @@ export class KpiService {
     );
   }
 
+  // 工場ID、加工方法、品番から設備情報(鍛造：設備名、切削：ラインNo)を取得
   getLineNo_type(factory: number =0,parts_no: string ='',type: number =0): Observable<any>{
     const url = `${this.apiURL}/kpi/lineno?factory=${factory}&parts_no=${parts_no}&type=${type}`;
     return this.http.get<any>(url).pipe(
@@ -29,6 +30,7 @@ export class KpiService {
     );
   }
 
+  // 現行未使用
   getProductHistory(factory: number =0,parts_no: string='',date: string=''): Observable<any>{
     const url = `${this.apiURL}/kpi/product?factory=${factory}&parts_no=${parts_no}&date=${date}`;
     return this.http.get<any>(url).pipe(
@@ -36,6 +38,7 @@ export class KpiService {
     );
   }
 
+  // 鍛造のKPIデータ取得
   getForgingKpi(factory: number =0,parts_no: string='',machine_name: string='', date: string=''): Observable<any>{
     const url = `${this.apiURL}/kpi/forging?factory=${factory}&parts_no=${parts_no}&machine_name=${machine_name}&date=${date}`;
     return this.http.get<any>(url).pipe(
@@ -44,8 +47,27 @@ export class KpiService {
     
   }
 
+  // 鍛造の工場全体での生産勝ち負け
+  getForgingTotal_factory(factory: number =0,day: number=0,firstday: string='', today: string=''): Observable<any>{
+    const url = `${this.apiURL}/kpi/forging_factory?factory=${factory}&day=${day}&firstday=${firstday}&today=${today}`;
+    return this.http.get<any>(url).pipe(
+        map((res) => res as any)    
+    );
+    
+  }
+
+  // 切削のKPIデータ取得
   getMachiningKPI(factory: number =0,parts_no: string='',line_no: string='', date: string=''): Observable<any>{
     const url = `${this.apiURL}/kpi/machining?factory=${factory}&parts_no=${parts_no}&line_no=${line_no}&date=${date}`;
+    return this.http.get<any>(url).pipe(
+        map((res) => res as any)    
+    );
+    
+  }
+
+  //切削の工場全体での生産勝ち負け
+  getMachiningTotal_factory(factory: number =0,firstday: string ='',today: string=''): Observable<any>{
+    const url = `${this.apiURL}/kpi/machining_factory?factory=${factory}&firstday=${firstday}&today=${today}`;
     return this.http.get<any>(url).pipe(
         map((res) => res as any)    
     );

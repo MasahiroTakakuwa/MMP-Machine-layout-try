@@ -14,6 +14,7 @@ import { ButtonModule } from 'primeng/button';
 import { MessageService } from 'primeng/api';
 import { MessageModule } from 'primeng/message';
 import { ToastModule } from 'primeng/toast';
+import { CommonModule } from '@angular/common';
 import { parse } from 'date-fns';
 
 // interfaceはクラスの外側に記述する事
@@ -56,6 +57,13 @@ export interface ForgingResponse {
   ForgingProg: ForgingProgItem[];
 }
 
+// 鍛造進捗勝ち負け計算用数値格納
+export interface ForgingTotalsResponse {
+  ForgingPlan_factory: number; // 返却が数値なら number に
+  ForgingProg_factory: number; // 同上
+}
+
+
 export interface MachiningPlanItem {
   target_prod: number; // 例: 45000
 }
@@ -72,7 +80,13 @@ export interface MachiningResponse {
   MachiningProg: MachiningProgItem[];
 }
 
-// 今月1日を生成
+// 切削進捗勝ち負け計算用数値格納
+export interface MachiningTotalsResponse {
+  MachiningPlan_factory: number; // 返却が数値なら number に
+  MachiningProg_factory: number; // 同上
+}
+
+// 今月1日を生成(yyyy-mm-dd形式)
 export function getFirstDayOfCurrentMonthInJST(): string {
   const now = new Date();
   // 日本時間での年と月を取得（ローカルタイムに依存しない）
@@ -92,6 +106,30 @@ export function getFirstDayOfCurrentMonthInJST(): string {
 
   return `${yyyy}-${mm}-${dd}`;
 
+}
+
+// 今日の日付を生成(yyyy-mm-dd形式)
+export function getTodayInJST(): string {
+  const now = new Date();
+
+  // 日本時間での年・月・日を取得
+  const parts = new Intl.DateTimeFormat('ja-JP', {
+    timeZone: 'Asia/Tokyo',
+    year: 'numeric',
+    month: 'numeric',
+    day: 'numeric'
+  }).formatToParts(now);
+
+  const year = Number(parts.find(p => p.type === 'year')?.value);
+  const month = Number(parts.find(p => p.type === 'month')?.value);
+  const day = Number(parts.find(p => p.type === 'day')?.value);
+
+  // yyyy-MM-dd 形式に整形
+  const yyyy = String(year);
+  const mm = String(month).padStart(2, '0');
+  const dd = String(day).padStart(2, '0'); // ←ここを修正
+
+  return `${yyyy}-${mm}-${dd}`;
 }
 
 // 今月の土曜・日曜になる日付をnumberで取得
@@ -114,11 +152,38 @@ export function getWeekendDaysOfCurrentMonth(): number[] {
   return weekendDays;
 }
 
+// 任意の開始日から終了日までの平日日数をカウント
+export function countWeekdaysInclusive(startDate: Date, endDate: Date): number {
+  const start = new Date(startDate);
+  const end = new Date(endDate);
+  start.setHours(0, 0, 0, 0);
+  end.setHours(0, 0, 0, 0);
+
+  if (start > end) return 0;
+
+  let count = 0;
+  for (let d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) {
+    const day = d.getDay();
+    if (day !== 0 && day !== 6) count++;
+  }
+  return count;
+}
+
+/** 今月1日から「昨日」までの平日数を返す（今日を含めない） */
+export function getWeekdaysThisMonthUntilYesterday(now: Date = new Date()): number {
+  const year = now.getFullYear();
+  const month = now.getMonth();
+  const start = new Date(year, month, 1);
+  const yesterday = new Date(year, month, now.getDate() - 1);
+   return countWeekdaysInclusive(start, yesterday);
+}
+
 
 @Component({
     selector: 'app-kpi',
     standalone: true,
-    imports: [ChartModule,DropdownModule,FluidModule,FormsModule,SelectButtonModule,ToggleButtonModule,ButtonModule,MessageModule,ToastModule],
+    imports: [ChartModule,DropdownModule,FluidModule,FormsModule,SelectButtonModule,
+              ToggleButtonModule,ButtonModule,MessageModule,ToastModule,CommonModule],
     templateUrl: './kpi.component.html',
     styleUrls: ['./kpi.component.scss'],
     providers: [MessageService],
@@ -139,6 +204,10 @@ export class KpiComponent implements OnInit, OnDestroy{
     machiningplans: MachiningPlanItem[] = [];
     machiningprogs: MachiningProgItem[] = [];
     weekendDays: number[] = [];     // 休日の日付を格納用
+    // 生産勝ち負け表示
+    judge: string = '〇';       // 判定
+    delta: number = 0;          // 差分
+
     // selectButtonの初期設定
     // 工場選択
     selectButtonValues: FactoryOption[] = [
@@ -192,6 +261,105 @@ export class KpiComponent implements OnInit, OnDestroy{
         this.updateToggleState(this.selectButtonValue.code);
 
     }
+
+    // ビュー初期設定後処理
+    ngAfterViewInit() {
+        this.initCharts();
+    }
+
+    // ブラウザ終了時
+    ngOnDestroy() {
+        if (this.subscription) {
+            this.subscription.unsubscribe();
+        }
+
+    }
+
+    // UI表示関連
+    // 品番ドロップダウンリスト更新(工場選択後)
+    loadDropdownItems(factoryCode: number) {
+        // 固定項目として全品番を宣言
+        const fixedItem = {name: '全品番', code: 'all'}
+        const type = this.toggleValue ? 1 : 0;              // 加工方法 1:切削　0:鍛造
+        // 加工方法で分岐
+        if(type == 1){
+            this.kpiService.getPartsNo_type(factoryCode,type).subscribe((items: Kpi[]) =>
+            {
+                const dynamicItems = items.map(item => ({
+                    name: item.parts_no,
+                    code: item.parts_no
+                }));
+                this.dropdownValues = [fixedItem, ...dynamicItems];
+                                
+            });
+
+        }
+        else if(type == 0){
+            this.dropdownValues = [fixedItem];
+
+        }
+        // 先頭のインデックスを固定項目に設定
+        this.dropdownValue = null;
+        
+    }
+
+    // 設備情報ドロップダウンリスト更新
+    loadDropdownItems2(factoryCode: number, partsCode: string) {
+        // ここでは 0/1 に統一（例：1=切削, 0=鍛造）
+        const type = this.toggleValue ? 1 : 0;
+        type OptionItem = {name:string;code:string};
+        // 呼び出し前ガード
+        if (!this.dropdownValue || this.dropdownValue.code === undefined) {
+            // 必要なら初期化やログ
+            return;
+        }
+        // 'all' かつ切削の場合は固定項目のみ
+        if (this.dropdownValue.code === 'all' && type == 1) {
+            // 固定項目として全ラインを宣言
+            const fixedItem = { name: '全ライン', code: 'all' };
+            this.dropdown2Values = [fixedItem];
+            this.dropdown2Value = this.dropdown2Values[0]; // ここで確実にセット
+            return;
+        }
+        // それ以外の場合はAPI 呼び出し（items が null の場合に備えて正規化）
+        else{
+            // 固定項目として全設備を宣言
+            const fixedItem = { name: '全設備', code: 'all' };
+            this.kpiService.getLineNo_type(factoryCode, partsCode, type).subscribe({
+            next: (items: any[]) => {
+            const list = Array.isArray(items) ? items : [];
+            let dynamicItems: OptionItem[] = [];
+            if (type === 0) {
+                // 鍛造なら machine_name
+                dynamicItems = list.map(item => ({
+                name: item?.machine_name ?? '',
+                code: item?.machine_name ?? ''
+                }));
+            } else if (type === 1) {
+                // 切削なら line_no
+                dynamicItems = list.map(item => ({
+                name: item?.line_no ?? '',
+                code: item?.line_no ?? ''
+                }));
+            } else {
+                // 予期しない type のフォールバック
+                dynamicItems = [];
+            }
+            // 固定 + 動的
+            this.dropdown2Values = [fixedItem, ...dynamicItems];
+            // 先頭をデフォルト選択（配列が空でも fixedItem が入るため安全）
+            this.dropdown2Value = this.dropdown2Values[0];
+            },
+            error: (err) => {
+            console.error('getLineNo_type error:', err);
+            // エラー時も安全に初期化
+            this.dropdown2Values = [fixedItem];
+            this.dropdown2Value = this.dropdown2Values[0];
+            }
+        });
+        }
+    
+    }
     
     // 工場区分変更後
     onFactoryChange(event: SelectButtonChangeEvent) {
@@ -235,6 +403,7 @@ export class KpiComponent implements OnInit, OnDestroy{
         this.loadDropdownItems(this.selectButtonValue.code);
     }
 
+    // グラフ描画関連
     // グラフ描画
     displayCharts(){
         // UIに入力されているデータを格納
@@ -378,6 +547,9 @@ export class KpiComponent implements OnInit, OnDestroy{
             error: (err) => console.error(err),
             });
         }
+
+        // 工場全体の生産進捗勝ち負け表示
+        this.displayResult();
     }
  
     // チャート初期設定
@@ -798,102 +970,78 @@ export class KpiComponent implements OnInit, OnDestroy{
 
     }
 
-    // 品番ドロップダウンリスト更新(工場選択後)
-    loadDropdownItems(factoryCode: number) {
-        // 固定項目として全品番を宣言
-        const fixedItem = {name: '全品番', code: 'all'}
-        const type = this.toggleValue ? 1 : 0;              // 加工方法 1:切削　0:鍛造
-        // 加工方法で分岐
-        if(type == 1){
-            this.kpiService.getPartsNo_type(factoryCode,type).subscribe((items: Kpi[]) =>
-            {
-                const dynamicItems = items.map(item => ({
-                    name: item.parts_no,
-                    code: item.parts_no
-                }));
-                this.dropdownValues = [fixedItem, ...dynamicItems];
-                                
+    // 生産勝ち負け関連
+    displayResult(){
+        // 使用する変数を取得
+        const today = getTodayInJST();                          // 当日(string型)
+        const firstday = getFirstDayOfCurrentMonthInJST();      // 今月1日(string型)
+        const factory = this.selectButtonValue.code | 0;        // 工場区分
+        const type = this.toggleValue ? 1 : 0;                  // 加工方法 1:切削　0:鍛造
+        const daynumber = new Date().getDate();                 // 今日の日にち(number型)
+        const daycount = getWeekdaysThisMonthUntilYesterday();  // 今月の今日までの平日数
+
+        // 累積の生産計画数と良品数の格納先を宣言
+        let PlanTotal = 0;
+        let ProgTotal = 0;
+        if(type == 0){
+            this.kpiService.getForgingTotal_factory(factory,daynumber,firstday,today).subscribe({
+                next: (res: ForgingTotalsResponse) => {
+                    PlanTotal = Number(res.ForgingPlan_factory);
+                    ProgTotal = Number(res.ForgingProg_factory);
+                    if(PlanTotal>ProgTotal){
+                        this.judge = '✖';
+                        this.delta = PlanTotal-ProgTotal;
+                    }
+                    else{
+                        this.judge = '〇';
+                        this.delta = ProgTotal - PlanTotal;
+                    }
+                    
+                    // console.log('FPlan:',PlanTotal);
+                    // console.log('Fgood:',ProgTotal);
+                },
+                
+            error: (err) => {
+                    console.error('getForgingTotal_factory error:', err);
+                    // エラー時のフォールバック
+                    PlanTotal = 0;
+                    ProgTotal = 0;
+                }
+
             });
-
+            
+            
         }
-        else if(type == 0){
-            this.dropdownValues = [fixedItem];
+        else if(type == 1){
+            let PlanTotalPerday = 0;
+            this.kpiService.getMachiningTotal_factory(factory,firstday,today).subscribe({
+                next: (res: MachiningTotalsResponse) => {
+                    PlanTotalPerday = Number(res.MachiningPlan_factory);
+                    PlanTotal = PlanTotalPerday * daycount;
+                    ProgTotal = Number(res.MachiningProg_factory);
+                    if(PlanTotal>ProgTotal){
+                        this.judge = '✖';
+                        this.delta = PlanTotal-ProgTotal;
+                    }
+                    else{
+                        this.judge = '〇';
+                        this.delta = ProgTotal - PlanTotal;
+                    }
+                    // console.log('MPlan:',PlanTotal);
+                    // console.log('Mgood:',ProgTotal);
 
-        }
-        // 先頭のインデックスを固定項目に設定
-        this.dropdownValue = null;
-        
-    }
+                },
+                
+                error: (err) => {
+                        console.error('getMachiningTotal_factory error:', err);
+                        // エラー時のフォールバック
+                        PlanTotal = 0;
+                        ProgTotal = 0;
+                    }
 
-    loadDropdownItems2(factoryCode: number, partsCode: string) {
-    
-    // ここでは 0/1 に統一（例：1=切削, 0=鍛造）
-    const type = this.toggleValue ? 1 : 0;
-    type OptionItem = {name:string;code:string};
-    // 呼び出し前ガード
-    if (!this.dropdownValue || this.dropdownValue.code === undefined) {
-        // 必要なら初期化やログ
-        return;
-    }
-    // 'all' かつ切削の場合は固定項目のみ
-    if (this.dropdownValue.code === 'all' && type == 1) {
-        // 固定項目として全ラインを宣言
-        const fixedItem = { name: '全ライン', code: 'all' };
-        this.dropdown2Values = [fixedItem];
-        this.dropdown2Value = this.dropdown2Values[0]; // ここで確実にセット
-        return;
-    }
-    // それ以外の場合はAPI 呼び出し（items が null の場合に備えて正規化）
-    else{
-        // 固定項目として全設備を宣言
-        const fixedItem = { name: '全設備', code: 'all' };
-        this.kpiService.getLineNo_type(factoryCode, partsCode, type).subscribe({
-        next: (items: any[]) => {
-        const list = Array.isArray(items) ? items : [];
-        let dynamicItems: OptionItem[] = [];
-        if (type === 0) {
-            // 鍛造なら machine_name
-            dynamicItems = list.map(item => ({
-            name: item?.machine_name ?? '',
-            code: item?.machine_name ?? ''
-            }));
-        } else if (type === 1) {
-            // 切削なら line_no
-            dynamicItems = list.map(item => ({
-            name: item?.line_no ?? '',
-            code: item?.line_no ?? ''
-            }));
-        } else {
-            // 予期しない type のフォールバック
-            dynamicItems = [];
-        }
-        //   console.log(dynamicItems);
-        // 固定 + 動的
-        this.dropdown2Values = [fixedItem, ...dynamicItems];
+            });
+            
 
-        // 先頭をデフォルト選択（配列が空でも fixedItem が入るため安全）
-        this.dropdown2Value = this.dropdown2Values[0];
-        },
-        error: (err) => {
-        console.error('getLineNo_type error:', err);
-        // エラー時も安全に初期化
-        this.dropdown2Values = [fixedItem];
-        this.dropdown2Value = this.dropdown2Values[0];
-        }
-    });
-    }
-    
-    }
-
-    // ビュー初期設定後処理
-    ngAfterViewInit() {
-        this.initCharts();
-    }
-
-    // ブラウザ終了時
-    ngOnDestroy() {
-        if (this.subscription) {
-            this.subscription.unsubscribe();
         }
 
     }

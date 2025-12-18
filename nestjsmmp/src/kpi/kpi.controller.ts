@@ -13,6 +13,7 @@ export class KpiController {
       return this.KpiService.getPartsNoSummary_type(factory,type);
     }
     
+    // 対象製品の加工設備・ラインNoを取得
     @Get('lineno')
     getLineNo(@Query('factory') factory: number,
               @Query('parts_no') parts_no: string,
@@ -30,6 +31,7 @@ export class KpiController {
       return this.KpiService.getproductSummary(factory,parts_no,date)
     }
 
+    // 鍛造のKPIデータ取得
     @Get('forging')
     async getForgingKpi(@Query('factory') factory: number,
                   @Query('parts_no') parts_no: string,
@@ -46,6 +48,7 @@ export class KpiController {
       
     }
 
+    // 切削のKPIデータ取得
     @Get('machining')
     async getMachiningKpi(@Query('factory') factory: number,
                   @Query('parts_no') parts_no: string,
@@ -60,6 +63,41 @@ export class KpiController {
         MachiningProg
       };
       
+    }
+
+    // 鍛造の工場全体の生産勝ち負け
+    @Get('forging_factory')
+    async getForgingTotal_factory(@Query('factory') factory: number,
+                                  @Query('day') day: number,
+                                  @Query('firstday') firstday: string,
+                                  @Query('today') today: string
+
+    ){
+      const ForgingPlan_factory = await this.KpiService.getTotalForginPlan_factory(factory,day);
+      const ForgingProg_factory = await this.KpiService.getTotalForgingProgress_factory(factory,firstday,today);
+
+      return{
+        ForgingPlan_factory,
+        ForgingProg_factory
+      }
+
+    }
+
+    // 切削の工場全体の生産勝ち負け
+    @Get('machining_factory')
+    async getMachiningTotal_factory(@Query('factory') factory: number,
+                                    @Query('firstday') firstday: string,
+                                    @Query('today') today: string
+
+    ){
+      const MachiningPlan_factory = await this.KpiService.getTotalMachiningPlan_factory(factory);
+      const MachiningProg_factory = await this.KpiService.getTotalMachiningProgress_factory(factory,firstday,today);
+
+      return{
+        MachiningPlan_factory,
+        MachiningProg_factory
+      };
+
     }
 
 }

@@ -27,3 +27,29 @@
 :host ::ng-deep .p-selectbutton .p-button {
   padding: 0.6rem 1rem;
 }
+
+
+/* 文字色用の変数（任意） */
+$ok-color:   #2563eb; // 青（Tailwindのblue-600相当）
+$ng-color:   #dc2626; // 赤（Tailwindのred-600相当)
+
+/* 判定・差分の共通スタイル */
+.judge,
+.delta {
+  font-weight: 600;
+
+  &.ok {
+    color: $ok-color;
+  }
+
+  &.ng {
+    color: $ng-color;
+  }
+}
+
+/* 数字の表示が揃いやすくする（任意） */
+.delta {
+  .delta-value {
+    font-variant-numeric: tabular-nums;
+   }
+  }
