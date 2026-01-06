@@ -33,14 +33,14 @@
                     <div class="font-semibold text-4xl judge"
                         [class.ok]="judge === '〇'"
                         [class.ng]="judge === '✖'">
-                        判定：{{ judge || '-' }}
+                        生産進捗：{{ judge || '-' }}
                     </div>
 
                     <!-- 差分（判定と同じ色） -->
                     <div class="font-semibold text-4xl delta"
                         [class.ok]="judge === '〇'"
                         [class.ng]="judge === '✖'">
-                        差分：{{ delta || '-' }}
+                        計画比：{{ delta || '-' }}
                     </div>
                     <!-- ここまで -->
                 </div>
@@ -52,21 +52,21 @@
     <div class="col-span-12 xl:col-span-12">
         <div class="card">
             
-            <div class="font-semibold text-2xl mb-2">生産実績</div>
+            <div class="font-semibold text-2xl mb-2">生産実績[個]</div>
             <p-chart type="bar" [data]="ProdChartData" [options]="ProdChartOptions" style="height: 550px;"></p-chart>
         </div>
     </div>
 
     <div class="col-span-12 xl:col-span-12">
         <div class="card">        
-            <div class="font-semibold text-2xl mb-2">可動率</div>
+            <div class="font-semibold text-2xl mb-2">稼働率[%]</div>
             <p-chart type="bar" [data]="OperatingRateData" [options]="OperatingRateOptions" style="height: 550px;"></p-chart>
         </div>
     </div>
 
     <div class="col-span-12 xl:col-span-12">
         <div class="card">        
-            <div class="font-semibold text-2xl mb-2">不良率</div>
+            <div class="font-semibold text-2xl mb-2">不良率[%]</div>
             <p-chart type="bar" [data]="DefectRateData" [options]="DefectRateOptions" style="height: 550px;"></p-chart>
         </div>
     </div>

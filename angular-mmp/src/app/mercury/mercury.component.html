@@ -83,7 +83,17 @@ src/app/mercury/mercury.component.html
             <div class="w-full h-full overflow-auto" style="position: relative;z-index: 1;">
             <div style="position: absolute; top: 0; left: 0;z-index: 2;" class="ml-5 mt-5">
             <h6>設備状態(Mercury)</h6>
-                <div class="flex gap-2 mb-2">
+                <div class="flex gap-1 mb-1">
+                    <div class="font-semibold text-4xl">
+                        生産進捗：
+                    </div>
+                    <div class="font-semibold text-4xl judge"
+                        [class.ok]="judge === '〇'"
+                        [class.ng]="judge === '✖'">
+                        {{ judge || '-' }}({{ delta || '-' }})
+                    </div>
+                </div>
+                <div class="flex gap-1 mb-1">
                     <span style="font-size: 28px;">数字：製品別ラインNo.</span>
                 </div>
                 <p></p>

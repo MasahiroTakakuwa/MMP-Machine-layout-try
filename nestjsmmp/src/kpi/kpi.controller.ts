@@ -1,8 +1,10 @@
-import { Controller, Get, Query } from "@nestjs/common";
+import { Controller, Get, Query, UseGuards } from "@nestjs/common";
 import { KpiService } from "./kpi.service";
 import { machine } from "os";
+import { AuthGuard } from "src/userManagement/auth/auth.guard";
 
 // KPI表示に関係するデータを取得するAPI
+@UseGuards(AuthGuard)
 @Controller('kpi')
 export class KpiController {
     constructor(private readonly KpiService: KpiService) {}
@@ -57,10 +59,12 @@ export class KpiController {
     ){
       const MachiningPlan = await this.KpiService.getMachiningPlan(factory,parts_no,line_no);
       const MachiningProg = await this.KpiService.getMachiningProgress(factory,parts_no,line_no,date);
-
+      const MachiningBaseCT = await this.KpiService.getMachiningBaseCT(factory,parts_no,line_no);
+      //console.log(MachiningBaseCT);
       return{
         MachiningPlan,
-        MachiningProg
+        MachiningProg,
+        MachiningBaseCT
       };
       
     }
@@ -92,7 +96,7 @@ export class KpiController {
     ){
       const MachiningPlan_factory = await this.KpiService.getTotalMachiningPlan_factory(factory);
       const MachiningProg_factory = await this.KpiService.getTotalMachiningProgress_factory(factory,firstday,today);
-
+      
       return{
         MachiningPlan_factory,
         MachiningProg_factory

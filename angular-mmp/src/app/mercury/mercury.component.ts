@@ -37,6 +37,106 @@ import { debounceTime, Subscription } from 'rxjs';
 import { LayoutService } from '../layout/service/layout.service';
 import { Table, TableModule } from 'primeng/table';
 
+import { KpiService } from '../services/kpi.service';
+
+// 切削進捗勝ち負け計算用数値格納
+export interface MachiningTotalsResponse {
+  MachiningPlan_factory: number; // 返却が数値なら number に
+  MachiningProg_factory: number; // 同上
+}
+
+// 今月1日を生成(yyyy-mm-dd形式)
+export function getFirstDayOfCurrentMonthInJST(): string {
+  const now = new Date();
+  // 日本時間での年と月を取得（ローカルタイムに依存しない）
+  const parts = new Intl.DateTimeFormat('ja-JP', {
+    timeZone: 'Asia/Tokyo',
+    year: 'numeric',
+    month: 'numeric',
+  }).formatToParts(now);
+
+  const year = Number(parts.find(p => p.type === 'year')?.value);
+  const month = Number(parts.find(p => p.type === 'month')?.value);
+
+  // "yyyy-MM-dd" を手動で組み立て
+  const yyyy = String(year);
+  const mm = String(month).padStart(2, '0');
+  const dd = '01';
+
+  return `${yyyy}-${mm}-${dd}`;
+
+}
+
+// 今日の日付を生成(yyyy-mm-dd形式)
+export function getTodayInJST(): string {
+  const now = new Date();
+
+  // 日本時間での年・月・日を取得
+  const parts = new Intl.DateTimeFormat('ja-JP', {
+    timeZone: 'Asia/Tokyo',
+    year: 'numeric',
+    month: 'numeric',
+    day: 'numeric'
+  }).formatToParts(now);
+
+  const year = Number(parts.find(p => p.type === 'year')?.value);
+  const month = Number(parts.find(p => p.type === 'month')?.value);
+  const day = Number(parts.find(p => p.type === 'day')?.value);
+
+  // yyyy-MM-dd 形式に整形
+  const yyyy = String(year);
+  const mm = String(month).padStart(2, '0');
+  const dd = String(day).padStart(2, '0'); // ←ここを修正
+
+  return `${yyyy}-${mm}-${dd}`;
+}
+
+// 今月の土曜・日曜になる日付をnumberで取得
+export function getWeekendDaysOfCurrentMonth(): number[] {
+  const today = new Date();                  // ローカルタイムゾーン（例: JST）で取得
+  const year = today.getFullYear();
+  const month = today.getMonth();            // 0=Jan, 1=Feb, ...
+  const daysInMonth = new Date(year, month + 1, 0).getDate(); // 月末日(0)から日数取得
+
+  const weekendDays: number[] = [];
+
+  for (let d = 1; d <= daysInMonth; d++) {
+    const dt = new Date(year, month, d);
+    const dayOfWeek = dt.getDay();           // 0=日, 6=土
+    if (dayOfWeek === 0 || dayOfWeek === 6) {
+      weekendDays.push(d);                   // 「日にち（1..31）」を格納
+    }
+  }
+
+  return weekendDays;
+}
+
+// 任意の開始日から終了日までの平日日数をカウント
+export function countWeekdaysInclusive(startDate: Date, endDate: Date): number {
+  const start = new Date(startDate);
+  const end = new Date(endDate);
+  start.setHours(0, 0, 0, 0);
+  end.setHours(0, 0, 0, 0);
+
+  if (start > end) return 0;
+
+  let count = 0;
+  for (let d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) {
+    const day = d.getDay();
+    if (day !== 0 && day !== 6) count++;
+  }
+  return count;
+}
+
+/** 今月1日から「昨日」までの平日数を返す（今日を含めない） */
+export function getWeekdaysThisMonthUntilYesterday(now: Date = new Date()): number {
+  const year = now.getFullYear();
+  const month = now.getMonth();
+  const start = new Date(year, month, 1);
+  const yesterday = new Date(year, month, now.getDate() - 1);
+   return countWeekdaysInclusive(start, yesterday);
+}
+
 @Component({
   selector: 'app-mercury',
   standalone: true,
@@ -46,8 +146,11 @@ import { Table, TableModule } from 'primeng/table';
   providers: [DialogService, MessageService]
 })
 export class MercuryComponent implements OnInit, OnDestroy {
-  //稼動率を小数点以下切り捨てに変更のため追加。
+    //稼動率を小数点以下切り捨てに変更のため追加。
     Math = Math;
+    judge: string = '-';       // 生産進捗
+    delta: number = 0;         // 差分
+
     // カウント格納先の初期宣言
     lineCount: number = 0;
     targetOver: number = 0;
@@ -80,7 +183,8 @@ export class MercuryComponent implements OnInit, OnDestroy {
     private machineService: MachineService,
     public dialogService: DialogService,
     private messageService: MessageService,
-    private userService: UsersService
+    private userService: UsersService,
+    private kpiService: KpiService
   ) {
     this.subscription = this.layoutService.configUpdate$.pipe(debounceTime(25)).subscribe(() => {
             
@@ -123,6 +227,11 @@ export class MercuryComponent implements OnInit, OnDestroy {
     this.refreshIntervalId = setInterval(() => {
       this.fetchMachines();
     }, 15000);
+
+    // 前日までの生産進捗を計算して表示
+    // 以下に処理を追加
+    this.displayResult();
+    //ここまで
 
     }
 
@@ -266,7 +375,6 @@ export class MercuryComponent implements OnInit, OnDestroy {
     return colorCount;
   }
 
-
   // 📌 Hàm xử lý khi click vào SVG trong chế độ Edit mode, trả về tọa độ tại điểm click
   // 📌 編集モードでSVGをクリックしたときの処理関数。クリック地点の座標を返す
   onSvgClick(event: MouseEvent): void {
@@ -372,4 +480,44 @@ export class MercuryComponent implements OnInit, OnDestroy {
     )
   }
 
+  // 生産勝ち負け関連
+  displayResult(){
+      // 使用する変数を取得
+      const today = getTodayInJST();                          // 当日(string型)
+      const firstday = getFirstDayOfCurrentMonthInJST();      // 今月1日(string型)
+      const daynumber = new Date().getDate();                 // 今日の日にち(number型)
+      const daycount = getWeekdaysThisMonthUntilYesterday();  // 今月の今日までの平日数
+
+      // 累積の生産計画数と良品数の格納先を宣言
+      let PlanTotal = 0;
+      let ProgTotal = 0;
+      let PlanTotalPerday = 0;
+          this.kpiService.getMachiningTotal_factory(2,firstday,today).subscribe({
+              next: (res: MachiningTotalsResponse) => {
+                  PlanTotalPerday = Number(res.MachiningPlan_factory);
+                  PlanTotal = PlanTotalPerday * daycount;
+                  ProgTotal = Number(res.MachiningProg_factory);
+                  if(PlanTotal>ProgTotal){
+                      this.judge = '✖';
+                      this.delta = PlanTotal-ProgTotal;
+                      
+                  }
+                  else{
+                      this.judge = '〇';
+                      this.delta = ProgTotal - PlanTotal;
+                  }
+                  
+              },
+              
+              error: (err) => {
+                      console.error('getMachiningTotal_factory error:', err);
+                      // エラー時のフォールバック
+                      PlanTotal = 0;
+                      ProgTotal = 0;
+              }
+
+          });
+
+  }
+  
 }

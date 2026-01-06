@@ -63,7 +63,6 @@ export interface ForgingTotalsResponse {
   ForgingProg_factory: number; // 同上
 }
 
-
 export interface MachiningPlanItem {
   target_prod: number; // 例: 45000
 }
@@ -75,9 +74,15 @@ export interface MachiningProgItem {
   visual_defect: number;
 }
 
+export interface MachiningBaseCTItem {
+    machine_no: number;
+    CT: number;
+}
+
 export interface MachiningResponse {
   MachiningPlan: MachiningPlanItem[];
   MachiningProg: MachiningProgItem[];
+  MachiningBaseCT: MachiningBaseCTItem[];
 }
 
 // 切削進捗勝ち負け計算用数値格納
@@ -178,7 +183,6 @@ export function getWeekdaysThisMonthUntilYesterday(now: Date = new Date()): numb
    return countWeekdaysInclusive(start, yesterday);
 }
 
-
 @Component({
     selector: 'app-kpi',
     standalone: true,
@@ -203,9 +207,10 @@ export class KpiComponent implements OnInit, OnDestroy{
     // 切削生産計画・進捗データ格納
     machiningplans: MachiningPlanItem[] = [];
     machiningprogs: MachiningProgItem[] = [];
+    machiningbaseCTs: MachiningBaseCTItem[] = [];
     weekendDays: number[] = [];     // 休日の日付を格納用
     // 生産勝ち負け表示
-    judge: string = '〇';       // 判定
+    judge: string = '〇';       // 生産進捗
     delta: number = 0;          // 差分
 
     // selectButtonの初期設定
@@ -410,7 +415,7 @@ export class KpiComponent implements OnInit, OnDestroy{
         const factory = this.selectButtonValue.code | 0;
         const type = this.toggleValue ? 1 : 0;              // 加工方法 1:切削　0:鍛造
         let parts = this.dropdownValue?.code;               // あいまい検索用に品番の末尾の'-1'を削除
-        if(parts?.endsWith('-1')){
+        if(type == 1 && parts?.endsWith('-1')){
             parts = parts.slice(0,-2);
         }
         const machine = this.dropdown2Value?.code;
@@ -418,7 +423,6 @@ export class KpiComponent implements OnInit, OnDestroy{
         
         // グラフ用データの格納先(1日から31日で固定)
         const progByDay: number[] = new Array(31).fill(0);      //生産実績
-        
         const progPerplan: number[] = new Array(31).fill(0);    //可動率
         const targetPerplan: number[] = new Array(31).fill(0);  //目標可動率
         const inlinedefByDay: number[] = new Array(31).fill(0); //工程内不良
@@ -471,6 +475,7 @@ export class KpiComponent implements OnInit, OnDestroy{
                     inlinedefByDay[day-1] = (this.formarprogs[n].inline_defect/this.formarprogs[n].good_prod)*100;      // 工程内不良
                     wastedefByDay[day-1] = (this.formarprogs[n].waste_prod/this.formarprogs[n].good_prod)*100;         // 捨て打ち
                     setupdefByDay[day-1] = (this.formarprogs[n].setup_prod/this.formarprogs[n].good_prod)*100;         // 段取り
+                
                 }
 
                 // データセットに値を代入。
@@ -500,9 +505,11 @@ export class KpiComponent implements OnInit, OnDestroy{
                 // --- アクセス方法 ---
                 this.machiningplans = Array.isArray(res.MachiningPlan) ? res.MachiningPlan : [];
                 this.machiningprogs = Array.isArray(res.MachiningProg) ? res.MachiningProg : [];
+                this.machiningbaseCTs = Array.isArray(res.MachiningBaseCT) ? res.MachiningBaseCT : [];
                 // 確認ログ
                 console.table(this.machiningplans);
-                console.table(this.machiningprogs);       
+                console.table(this.machiningprogs);
+                console.table(this.machiningbaseCTs);
                 // 3)グラフ用データを生成
                 // 生産計画(切削の生産計画は品番ごとのため、1ライン当たりの生産数を算出)
                 let lines = this.dropdown2Values.length -1 ;    // 全ラインを除外
@@ -511,11 +518,20 @@ export class KpiComponent implements OnInit, OnDestroy{
                 }
                 const planPerline = Math.ceil(this.machiningplans[0].target_prod / lines);
                 const planByDay: number[] = new Array(31).fill(planPerline);      //日ごと生産計画数
+                // 100%稼働時の生産数を基準CT+24h稼働で計算(結果はMath.floorで整数にする)
+                let prodByBaseCT = 0
+                for(let i=0;i<this.machiningbaseCTs.length;i++){
+                    prodByBaseCT += Math.floor(3600 * 24 / this.machiningbaseCTs[i].CT);
+
+                }
+                // 100%稼働時の生産数を計算
+                const baseByDay: number[] = new Array(31).fill(prodByBaseCT);
                 // 休日を除外
                 this.weekendDays = getWeekendDaysOfCurrentMonth();
                 for(let c=0;c<this.weekendDays.length;c++){
                     const index = this.weekendDays[c];
                     planByDay[index-1] = 0;
+                    baseByDay[index-1] = 0;
                 }
                 
                 // 生産実績
@@ -524,7 +540,8 @@ export class KpiComponent implements OnInit, OnDestroy{
                     const day = parseInt(this.machiningprogs[n].prod_date.split('-')[2], 10); 
                     progByDay[day-1] = this.machiningprogs[n].good_prod;       // 良品数
                     // 工程内不良は以下の部分に処理を追加
-                    progPerplan[day-1] =(progByDay[day-1]/planByDay[day-1])*100;  // 可動率
+                    // progPerplan[day-1] =(progByDay[day-1]/planByDay[day-1])*100;  // 可動率
+                    progPerplan[day-1] =(progByDay[day-1]/baseByDay[day-1])*100;  // 稼働率
                     targetPerplan[day-1] = 85;                                    // 目標可動率
                     inlinedefByDay[day-1] = (this.machiningprogs[n].inline_defect/this.machiningprogs[n].good_prod)*100;      // 工程内不良
                     visualdefByDay[day-1] = (this.machiningprogs[n].visual_defect/this.machiningprogs[n].good_prod)*100;         // 外観不良(捨て打ち)            
@@ -533,8 +550,8 @@ export class KpiComponent implements OnInit, OnDestroy{
                 this.ProdChartData.datasets[0].data = planByDay;    // 生産計画
                 this.ProdChartData.datasets[1].data = progByDay;    // 生産実績
 
-                this.OperatingRateData.datasets[0].data = targetPerplan;
-                this.OperatingRateData.datasets[1].data = progPerplan;
+                this.OperatingRateData.datasets[0].data = targetPerplan;    // 目標稼働率
+                this.OperatingRateData.datasets[1].data = progPerplan;      // 実稼働率
                 
                 this.DefectRateData.datasets[0].data = inlinedefByDay;  // 工程内不良
                 this.DefectRateData.datasets[1].data = visualdefByDay;  // 外観不良
@@ -624,7 +641,7 @@ export class KpiComponent implements OnInit, OnDestroy{
                     type: 'linear',
                     position: 'left',
                     title:{
-                        display:true,
+                        display:false,
                         text: '[個]',
                         font: {size:18},
                         padding: {top:0,bottom: 8}
@@ -652,7 +669,7 @@ export class KpiComponent implements OnInit, OnDestroy{
             datasets: [
                 {
                     type: 'bar',
-                    label: '目標可動率',
+                    label: '目標',
                     backgroundColor: '#b0b0b0ff',
                     borderColor: '#b0b0b0ff',
                     data: [60, 60, 60, 60, 60, 0, 0],
@@ -660,7 +677,7 @@ export class KpiComponent implements OnInit, OnDestroy{
                 },
                 {
                     type: 'bar',
-                    label: '可動率',
+                    label: '実績',
                     backgroundColor: '#0022ffff',
                     borderColor: '#0022ffff',
                     data: [102, 97, 91, 103, 10],
@@ -711,7 +728,7 @@ export class KpiComponent implements OnInit, OnDestroy{
                     type: 'linear',
                     position: 'left',
                     title:{
-                        display:true,
+                        display:false,
                         text: '[％]',
                         font: {size:18},
                         padding: {top:0,bottom: 8}
@@ -836,7 +853,7 @@ export class KpiComponent implements OnInit, OnDestroy{
                     position: 'left',
                     stacked: true,
                     title:{
-                        display:true,
+                        display:false,
                         text: '[％]',
                         font: {size:18},
                         padding: {top:0,bottom: 8}

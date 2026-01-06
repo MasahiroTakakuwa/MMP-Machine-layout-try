@@ -12,9 +12,11 @@
 //       • サービスを呼び出して設備一覧と稼働率を取得
 // ==============================================================================
 
-import { Controller, Get, Query } from '@nestjs/common';
+import { Controller, Get, Query, UseGuards } from '@nestjs/common';
 import { MachineService } from './machine.service';
+import { AuthGuard } from 'src/userManagement/auth/auth.guard';
 
+@UseGuards(AuthGuard)
 @Controller('machine')
 export class MachineController {
   constructor(private readonly machineService: MachineService) {}

@@ -170,3 +170,21 @@
 .line-no {
   white-space: pre-line; // 改行文字(\n)を有効にする
 }
+
+/* 文字色用の変数（任意） */
+$ok-color:   #2563eb; // 青（Tailwindのblue-600相当）
+$ng-color:   #dc2626; // 赤（Tailwindのred-600相当)
+
+/* 生産進捗の共通スタイル */
+.judge,
+.delta{
+  font-weight: 600;
+
+  &.ok {
+    color: $ok-color;
+  }
+
+  &.ng {
+    color: $ng-color;
+  }
+}

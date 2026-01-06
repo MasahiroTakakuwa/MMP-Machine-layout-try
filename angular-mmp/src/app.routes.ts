@@ -41,7 +41,7 @@ export const appRoutes: Routes = [
             { path: 'general-information', component: GeneralInformation },
             { path: 'account-management', component: AccountManagement },
             { path: 'plan', component: PlanComponent},
-            { path: 'kpi', component: KpiComponent},
+            { path: 'kpi', component: KpiComponent}
 
             // { path: 'test', component: Test},
             // { path: 'test2', component: Test2},

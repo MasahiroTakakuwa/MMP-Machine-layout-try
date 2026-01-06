@@ -7,6 +7,7 @@ import { ForgingKpi } from "./models/forging-kpi.entity";
 import { MachiningPlan } from "./models/machining-product-plan.entity";
 import { ForgingPlan } from "./models/forging-product-plan.entity";
 import { InjectRepository } from "@nestjs/typeorm";
+import { MachineStatusHistory } from "./models/machine-status-history.entity";
 import { query } from "express";
 
 @Injectable()
@@ -25,6 +26,8 @@ export class KpiService {
     private readonly MPlanRepo: Repository<MachiningKpi>,
     @InjectRepository(ForgingPlan)
     private readonly FPlanRepo: Repository<ForgingKpi>,
+    @InjectRepository(MachineStatusHistory)
+    private readonly statusRepo: Repository<MachineStatusHistory>
   ){}
 
   // 指定された工場・加工方法の品番一覧を取得
@@ -100,8 +103,9 @@ export class KpiService {
   }
 
   // 鍛造の生産計画取得
+  // 鍛造は工場内全設備or対象設備で絞り込み
   async getForgingPlan(factory: number, parts_no: string, machine_name: string){
-      // 工場内の全品番対象
+      // 工場内の全設備対象
       if(machine_name ==='all'){
         const query = await this.FPlanRepo
         .createQueryBuilder('m')
@@ -113,17 +117,17 @@ export class KpiService {
         .orderBy('m.day ');
         const result = await query.getRawMany();
         return result;
-
       }
-      // 品番・設備指定あり
+      // 設備指定あり
       else{
         const query = await this.FPlanRepo
         .createQueryBuilder('m')
         .select(['m.day AS day',
-                'm.target_prod AS target_prod'
+                'SUM(m.target_prod) AS target_prod'
         ])
         .where('m.factory_type = :factory',{factory})
-        .andWhere('m.parts_no = :parts_no', {parts_no})
+        .andWhere('m.machine_name = :machine_name', {machine_name})
+        .groupBy('m.day')
         .orderBy('m.day ');
         const result = await query.getRawMany();
         return result;
@@ -134,7 +138,7 @@ export class KpiService {
 
   // 鍛造の生産実績取得
   async getForgingProgress(factory: number, parts_no: string, machine_name: string, date: string){
-    // 工場内の全品番対象
+    // 工場内の全設備対象
       if(machine_name ==='all'){
         const query = await this.ForgingRepo
         .createQueryBuilder('m')
@@ -152,18 +156,18 @@ export class KpiService {
         return result;
 
       }
-      // 品番・設備指定あり
+      // 設備指定あり
       else{
         const query = await this.ForgingRepo
         .createQueryBuilder('m')
         .select(['m.prod_date AS prod_date',
-                'm.good_prod AS good_prod',
-                'm.waste_prod AS waste_prod',
-                'm.setup_prod AS setup_prod',
-                'm.inline_defect AS inline_defect'
+                'SUM(m.good_prod) AS good_prod',
+                'SUM(m.waste_prod) AS waste_prod',
+                'SUM(m.setup_prod) AS setup_prod',
+                'SUM(m.inline_defect) AS inline_defect'
         ])
         .where('m.factory_type = :factory',{factory})
-        .andWhere('m.parts_no = :parts_no',{parts_no})
+        .andWhere('m.machine_name = :machine_name',{machine_name})
         .andWhere('m.prod_date >= :date',{date})
         .groupBy('m.prod_date')
         .orderBy('m.prod_date');
@@ -309,6 +313,40 @@ export class KpiService {
         const result = await query.getRawOne();
         return Number(result?.good_prod ?? 0);
 
+  }
+
+  async getMachiningBaseCT(factory: number, parts_no: string, line_no: string){
+      const keyword = parts_no ?? ''; // 入力文字列
+      const query = await this.deviceRepo
+      .createQueryBuilder('m')
+        .select('m.machine_no AS machine_no')
+        .where('m.factory_type = :factory',{factory})
+        .andWhere('m.device_type = 40')
+        if(parts_no !== 'all'){
+          query.andWhere('m.parts_no LIKE :parts_no', {parts_no: `%${keyword}%` })
+        }
+        if(line_no !== 'all'){
+          query.andWhere('m.line_no = :line_no',{line_no})
+        }
+        const machine_list = await query.getRawMany();
+
+        // machine_no の配列を作る
+        const machineNos = machine_list.map((x) => x.machine_no);     
+        // 該当がなければ空配列を返す（ここで終了）
+        if (machineNos.length === 0) {
+          return [];
+        }
+
+      // 取得したmachine_noの分CTを取得して返す
+      const query2 = await this.statusRepo
+      .createQueryBuilder('s')
+        .select(['s.machine_no AS machine_no',
+                 'CAST(s.CT AS DECIMAL(8,2)) AS CT'])
+        .where('s.factory_type = :factory', { factory })
+        .andWhere('s.machine_no IN (:...machineNos)', { machineNos }) // ← スプレッドパラメータ
+        const result = await query2.getRawMany();
+        return result
+      
   }
 
 }
