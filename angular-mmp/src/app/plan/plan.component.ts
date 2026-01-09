@@ -86,6 +86,20 @@ const FACTORY_MAP: Record<string, number> = {
 
 const COL = { A: 0, D: 3, E: 4, F: 5 } as const;
 
+// シート名ごとの抽出キーワード設定
+function getKeywordsForSheet(sheetName: string): string[] {
+  // Mercuryはシャフトウォームがあるため、転造も含む
+  const sheetKeywordMap: Record<string, string[]> = {
+    'ティエラ1係': ['切削'],
+    'ティエラ2係': ['切削'],
+    '（STN） ': ['切削'],
+    '（Mercury）': ['切削', '転造'],
+  };
+
+  return sheetKeywordMap[sheetName] ?? ['切削', '鍛造']; 
+}
+
+
 /** ① A/E列の「縦方向（行方向）」結合を8行目以降で解除し、結合元の値を下方向へ展開 */
 function unmergeAE_vertical(ws: XLSX.WorkSheet, startRow1Based = 8): void {
   const startR = startRow1Based - 1; // 0-based
@@ -161,6 +175,32 @@ function pickAEWhereFIncludes(ws: XLSX.WorkSheet, startRow1Based = 8, keyword = 
   return out;
 }
 
+function pickAEWhereFIncludesAny(
+  ws: XLSX.WorkSheet,
+  startRow1Based: number,
+  keywords: string[]
+) {
+  const results = [];
+  const range = XLSX.utils.decode_range(ws['!ref'] || 'A1');
+  const end = range.e.r + 1;
+
+  for (let r = startRow1Based; r <= end; r++) {
+    const A = ws[`A${r}`]?.v ?? null;
+    const D = ws[`D${r}`]?.v ?? null;
+    const E = ws[`E${r}`]?.v ?? null;
+    const F = ws[`F${r}`]?.v ?? '';
+
+    const fText = String(F).replace(/\u3000/g, ' ').trim(); // 全角空白など正規化
+
+    if (!keywords.some(kw => fText.includes(kw))) continue;
+
+    results.push({ row: r, A, D, E, F });
+  }
+
+  return results;
+}
+
+
 /** シート名から工場区分（番号）を取得する */
 function resolveFactoryDivision(sheetName: string): number | null {
   return FACTORY_MAP.hasOwnProperty(sheetName) ? FACTORY_MAP[sheetName] : null;
@@ -196,24 +236,30 @@ function extractRowsMachining(wb: XLSX.WorkBook, targetSheets: string[], startRo
       continue;
     }
 
-    // ① A/E の縦方向結合を解除し、8行目以降に値を展開
+    // A/E の縦方向結合を解除し、8行目以降に値を展開
     unmergeAE_vertical(ws, startRow1Based);
-    // ②③ F列に「切削」を含む行の A/E を収集
-    const rows = pickAEWhereFIncludes(ws, startRow1Based, '切削');
+    // シートごとの抽出キーワードを取得
+    const keywords = getKeywordsForSheet(sheetName);
+    // F列に「切削」を含む行の A/E を収集
+    //const rows = pickAEWhereFIncludes(ws, startRow1Based, '切削');
+    
+    // 2) F列からキーワードのいずれかを含む行を抽出
+    const rows = pickAEWhereFIncludesAny(ws, startRow1Based, keywords);
+
     const factoryDivision = resolveFactoryDivision(sheetName); // マップのみ参照
 
-    // ★ ⑤ 重複除外用のキーセット（シート単位で管理）
+    // 重複除外用のキーセット（シート単位で管理）
     const seenKeys = new Set<string>();
     
     for (const r of rows) {
-      // ★ ④ E が 0 の行は除外（数値0 / 文字列"0"）
+      // E が 0 の行は除外（数値0 / 文字列"0"）
       if (isZeroValue(r.E)) {
         continue;
       }
 
-      // ★ 正規化して重複キー生成（A/E の表記揺れ対策）
+      // 正規化して重複キー生成（A/E の表記揺れ対策）
       const normA = normalizeForCompare(r.A);
-      const normD = normalizeForCompare(r.D);
+      //const normD = normalizeForCompare(r.D);
       const normE = normalizeForCompare(r.E);
 
       // A と E が両方 null の場合は意味のある品番比較ができないため、任意で除外しても良い

@@ -18,7 +18,7 @@
 
 <div class="card mt-6" *ngIf="rows.length && previewType">
   <div class="font-semibold text-xl mb-4">
-    プレビュー（{{ previewType === 'forging' ? '鍛造：C/D結合行 → K〜AO' : '切削：F列に「切削」含む行 → A/E取得' }}）
+    プレビュー（{{ previewType === 'forging' ? '鍛造' : '切削' }}）
   </div>
 
   <p-table [value]="rows" [responsiveLayout]="'scroll'">
