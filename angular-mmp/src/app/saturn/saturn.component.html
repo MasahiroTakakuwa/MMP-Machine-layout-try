@@ -82,12 +82,22 @@ src/app/saturn/saturn.component.html
         <h6>設備状態(Saturn)</h6>
             <div class="flex gap-1 mb-1">
                 <div class="font-semibold text-4xl">
-                    生産進捗：
+                    生産進捗(切削)：
                 </div>
                 <div class="font-semibold text-4xl judge"
                     [class.ok]="judge === '〇'"
                     [class.ng]="judge === '✖'">
                     {{ judge || '-' }}({{ delta || '-' }})
+                </div>
+            </div>
+            <div class="flex gap-1 mb-1">
+                <div class="font-semibold text-4xl">
+                    生産進捗(鍛造)：
+                </div>
+                <div class="font-semibold text-4xl judge"
+                    [class.ok]="f_judge === '〇'"
+                    [class.ng]="f_judge === '✖'">
+                    {{ f_judge || '-' }}({{ f_delta || '-' }})
                 </div>
             </div>
             <div class="flex gap-1 mb-1">

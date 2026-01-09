@@ -135,7 +135,7 @@ export class KpiController {
     ){
       const MachiningPlan_filter = await this.KpiService.getTotalMachiningPlan_filter(factory,parts);
       const MachiningProg_filter = await this.KpiService.getTotalMachiningProgress_filter(factory,parts,line,firstday,today);
-      console.log(MachiningPlan_filter);
+      
       return{
         MachiningPlan_filter,
         MachiningProg_filter

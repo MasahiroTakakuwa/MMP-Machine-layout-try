@@ -45,6 +45,24 @@ export interface ForgingTotalsResponse {
   ForgingProg_factory: number; // 同上
 }
 
+export interface ForgingPlanItem {
+  day: number;         // 1..31
+  target_prod: number; // 例: 45000
+}
+
+export interface ForgingProgItem {
+  prod_date: string;   // "yyyy-MM-dd"（JST）
+  good_prod: number;
+  waste_prod: number;
+  setup_prod: number;
+  inline_defect: number;
+}
+
+export interface ForgingResponse {
+  ForgingPlan: ForgingPlanItem[];
+  ForgingProg: ForgingProgItem[];
+}
+
 // 今月1日を生成(yyyy-mm-dd形式)
 export function getFirstDayOfCurrentMonthInJST(): string {
   const now = new Date();
@@ -146,6 +164,9 @@ export function getWeekdaysThisMonthUntilYesterday(now: Date = new Date()): numb
   providers: [DialogService, MessageService]
 })
 export class JupiterComponent implements OnInit, OnDestroy {
+  // 鍛造生産計画・進捗データ格納
+    formarplans: ForgingPlanItem[] = [];
+    formarprogs: ForgingProgItem[] = [];
   //稼動率を小数点以下切り捨てに変更のため追加。
     Math = Math;
     judge: string = '-';       // 生産進捗
@@ -231,7 +252,8 @@ export class JupiterComponent implements OnInit, OnDestroy {
       this.fetchMachines();
     }, 15000);
 
-    this.displayResult();
+    //this.displayResult();
+    this.displayProdResult();
     
   }
 
@@ -479,43 +501,97 @@ onWheel(event: WheelEvent): void {
   }
 
   // 生産勝ち負け関連
-    displayResult(){
-        // 使用する変数を取得
-        const today = getTodayInJST();                          // 当日(string型)
-        const firstday = getFirstDayOfCurrentMonthInJST();      // 今月1日(string型)
-        const daynumber = new Date().getDate();                 // 今日の日にち(number型)
-        const daycount = getWeekdaysThisMonthUntilYesterday();  // 今月の今日までの平日数
-  
-        // 累積の生産計画数と良品数の格納先を宣言
-        let PlanTotal = 0;
-        let ProgTotal = 0;
-        let PlanTotalPerday = 0;
-        this.kpiService.getForgingTotal_factory(1,daynumber,firstday,today).subscribe({
-                        next: (res: ForgingTotalsResponse) => {
-                            PlanTotal = Number(res.ForgingPlan_factory);
-                            ProgTotal = Number(res.ForgingProg_factory);
-                            if(PlanTotal>ProgTotal){
-                                this.judge = '✖';
-                                this.delta = PlanTotal-ProgTotal;
-                            }
-                            else{
-                                this.judge = '〇';
-                                this.delta = ProgTotal - PlanTotal;
-                            }
-                            
-                            // console.log('FPlan:',PlanTotal);
-                            // console.log('Fgood:',ProgTotal);
-                        },
-                        
-                    error: (err) => {
-                            console.error('getForgingTotal_factory error:', err);
-                            // エラー時のフォールバック
-                            PlanTotal = 0;
-                            ProgTotal = 0;
-                        }
+  displayResult(){
+      // 使用する変数を取得
+      const today = getTodayInJST();                          // 当日(string型)
+      const firstday = getFirstDayOfCurrentMonthInJST();      // 今月1日(string型)
+      const daynumber = new Date().getDate();                 // 今日の日にち(number型)
+      const daycount = getWeekdaysThisMonthUntilYesterday();  // 今月の今日までの平日数
+
+      // 累積の生産計画数と良品数の格納先を宣言
+      let PlanTotal = 0;
+      let ProgTotal = 0;
+      let PlanTotalPerday = 0;
+      this.kpiService.getForgingTotal_factory(1,daynumber,firstday,today).subscribe({
+        next: (res: ForgingTotalsResponse) => {
+            PlanTotal = Number(res.ForgingPlan_factory);
+            ProgTotal = Number(res.ForgingProg_factory);
+            if(PlanTotal>ProgTotal){
+                this.judge = '✖';
+                this.delta = PlanTotal-ProgTotal;
+            }
+            else{
+                this.judge = '〇';
+                this.delta = ProgTotal - PlanTotal;
+            }
+            
+            // console.log('FPlan:',PlanTotal);
+            // console.log('Fgood:',ProgTotal);
+        },
         
-                    });
-  
-    }
+        error: (err) => {
+                console.error('getForgingTotal_factory error:', err);
+                // エラー時のフォールバック
+                PlanTotal = 0;
+                ProgTotal = 0;
+            }
+
+        });
+
+  }
+
+  displayProdResult(){
+    const date = getFirstDayOfCurrentMonthInJST();      // 今月1日をstring型で生成
+    const parts = 'all';
+    const machine = 'all';
+    const progByDay: number[] = new Array(31).fill(0);      //生産実績
+    const planByDay: number[] = new Array(31).fill(0);      //日ごと生産計画数
+    let daycount = 0;       // 稼働日数(生産進捗表示に使用)
+    let PlanTotal = 0;
+    let ProgTotal = 0;
+    // 工場指定(Jupiter:1)
+    this.kpiService.getForgingKpi(1, parts, machine, date).subscribe({
+    next: (res: ForgingResponse) => {
+        // --- アクセス方法 ---
+        this.formarplans = Array.isArray(res.ForgingPlan) ? res.ForgingPlan : [];
+        this.formarprogs = Array.isArray(res.ForgingProg) ? res.ForgingProg : [];
+        // 確認ログ
+        // console.table(this.formarplans);
+        // console.table(this.formarprogs);
+        // 3)グラフ用データを生成
+        // 生産計画
+        for(let i=0;i<this.formarplans.length;i++){
+            const index = this.formarplans[i].day;
+            planByDay[index-1] = this.formarplans[i].target_prod;
+            
+        }
+        // 生産実績
+        for(let n=0;n<this.formarprogs.length;n++){
+            // 日付部分をintに変換
+            const day = parseInt(this.formarprogs[n].prod_date.split('-')[2], 10); 
+            progByDay[day-1] = this.formarprogs[n].good_prod;       // 良品数
+            // テスト
+            ProgTotal=Number(ProgTotal)+Number(this.formarprogs[n].good_prod);
+            daycount++;
+
+        }
+        for(let m=0;m<daycount;m++){
+            // テスト
+            PlanTotal = Number(PlanTotal)+Number(this.formarplans[m].target_prod);
+            
+        }
+        if(PlanTotal>ProgTotal){
+            this.judge = '✖';
+            this.delta = Math.floor(PlanTotal-ProgTotal);
+        }
+        else{
+            this.judge = '〇';
+            this.delta = Math.floor(ProgTotal - PlanTotal);
+        }
+
+    },
+    error: (err) => console.error(err),
+    });
+  }
 
 }

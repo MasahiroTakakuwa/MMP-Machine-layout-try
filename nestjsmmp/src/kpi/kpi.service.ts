@@ -48,7 +48,8 @@ export class KpiService {
       .createQueryBuilder('m')
       .select('m.parts_no AS parts_no')
       .groupBy('m.parts_no')
-      .where('m.factory_type = :factory', {factory});
+      .where('m.factory_type = :factory', {factory})
+      .andWhere('m.machine_name != :name',{name:'N100'});
       const result = await query.getRawMany();
       return result;
   }
@@ -278,6 +279,7 @@ export class KpiService {
         .where('m.factory_type = :factory',{factory})
         .andWhere('m.prod_date >= :date',{date})
         .andWhere('m.line_no NOT LIKE :underbarZero',{underbarZero:'%\\_0'})
+        .andWhere('m.machine_name != :name',{name:'N100'})
         .groupBy('m.prod_date')
         .orderBy('m.prod_date');
         const result = await query.getRawMany();
@@ -298,6 +300,7 @@ export class KpiService {
         .andWhere('m.parts_no LIKE :parts_no', {parts_no: `%${keyword}%` })
         .andWhere('m.prod_date >= :date',{date})
         .andWhere('m.line_no NOT LIKE :underbarZero',{underbarZero:'%\\_0'})
+        .andWhere('m.machine_name != :name',{name:'N100'})
         .groupBy('m.prod_date')
         .orderBy('m.prod_date');
         const result = await query.getRawMany();
