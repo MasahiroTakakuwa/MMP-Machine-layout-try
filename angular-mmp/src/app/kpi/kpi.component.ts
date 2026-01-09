@@ -449,12 +449,18 @@ export class KpiComponent implements OnInit, OnDestroy{
         const machine = this.machinelistValue?.code;        // 設備
         const date = getFirstDayOfCurrentMonthInJST();      // 今月1日をstring型で生成
         let parts = this.partslistValue?.code;              // 品番
-        // 切削の場合、あいまい検索用に品番の末尾の'-1'を削除
+        // 切削の場合、あいまい検索用に品番を成形
+        // 末尾の'-1'を削除
         if(type == 1 && parts?.endsWith('-1')){
             parts = parts.slice(0,-2);
         }
-        let daycount = 0;                                   // 稼働日数(生産進捗表示に使用)
-        
+        // 末尾の'ＣＫＤ'を削除
+        if(type == 1 && parts?.endsWith('CKD')){
+            parts = parts.slice(0,-3);
+        }
+        let daycount = 0;       // 稼働日数(生産進捗表示に使用)
+        let PlanTotal = 0;      // 累積計画
+        let ProgTotal = 0;      // 累積良品
         // グラフ用データの格納先(1日から31日で固定)
         const progByDay: number[] = new Array(31).fill(0);      //生産実績
         const progPerplan: number[] = new Array(31).fill(0);    //可動率
@@ -496,7 +502,7 @@ export class KpiComponent implements OnInit, OnDestroy{
                 for(let i=0;i<this.formarplans.length;i++){
                     const index = this.formarplans[i].day;
                     planByDay[index-1] = this.formarplans[i].target_prod;
-
+                    
                 }
                 // 生産実績
                 for(let n=0;n<this.formarprogs.length;n++){
@@ -509,7 +515,15 @@ export class KpiComponent implements OnInit, OnDestroy{
                     inlinedefByDay[day-1] = (this.formarprogs[n].inline_defect/this.formarprogs[n].good_prod)*100;      // 工程内不良
                     wastedefByDay[day-1] = (this.formarprogs[n].waste_prod/this.formarprogs[n].good_prod)*100;         // 捨て打ち
                     setupdefByDay[day-1] = (this.formarprogs[n].setup_prod/this.formarprogs[n].good_prod)*100;         // 段取り
-                
+                    // テスト
+                    ProgTotal=Number(ProgTotal)+Number(this.formarprogs[n].good_prod);
+                    daycount++;
+
+                }
+                for(let m=0;m<daycount;m++){
+                    // テスト
+                    PlanTotal = Number(PlanTotal)+Number(this.formarplans[m].target_prod);
+                    
                 }
 
                 // データセットに値を代入。
@@ -528,12 +542,13 @@ export class KpiComponent implements OnInit, OnDestroy{
                 this.DefectRateData = { ...this.DefectRateData };
 
                 // 工場全体の生産進捗勝ち負け表示
-                this.displayResult(daycount);
+                //this.displayResult(daycount);
+                // テスト   
+                this.displayProdResult(PlanTotal,ProgTotal);
             },
             error: (err) => console.error(err),
             });
 
-        //const day = parseInt(item.prod_date.split('-')[2], 10); // 日付部分をintに変換
         }
         // 切削
         else if(type === 1){
@@ -542,8 +557,7 @@ export class KpiComponent implements OnInit, OnDestroy{
                 // --- アクセス方法 ---
                 this.machiningplans = Array.isArray(res.MachiningPlan) ? res.MachiningPlan : [];
                 this.machiningprogs = Array.isArray(res.MachiningProg) ? res.MachiningProg : [];
-                this.machiningbaseCTs = Array.isArray(res.MachiningBaseCT) ? res.MachiningBaseCT : [];
-                
+                this.machiningbaseCTs = Array.isArray(res.MachiningBaseCT) ? res.MachiningBaseCT : [];                
                 // グラフ用データを生成
                 // 生産計画(切削の生産計画は品番ごとのため、1ライン当たりの生産数を算出)
                 let lines = this.machinelistValues.length -1 ;    // 全ラインを除外
@@ -570,7 +584,6 @@ export class KpiComponent implements OnInit, OnDestroy{
                 }
                 
                 // 生産実績
-                
                 for(let n=0;n<this.machiningprogs.length;n++){
                     // 日付部分をintに変換
                     const day = parseInt(this.machiningprogs[n].prod_date.split('-')[2], 10); 
@@ -584,6 +597,10 @@ export class KpiComponent implements OnInit, OnDestroy{
                     visualdefByDay[day-1] = (this.machiningprogs[n].visual_defect/this.machiningprogs[n].good_prod)*100;         // 外観不良(捨て打ち)            
                     // 切削稼働日を格納
                     daycount = daycount+1;
+                    //テスト
+                    PlanTotal = Number(PlanTotal+planPerline);
+                    ProgTotal = Number(ProgTotal)+Number(this.machiningprogs[n].good_prod);
+                    // console.log(ProgTotal);
                 }
                 // データセットに値を代入。                
                 this.ProdChartData.datasets[0].data = planByDay;    // 生産計画
@@ -600,7 +617,8 @@ export class KpiComponent implements OnInit, OnDestroy{
                 this.DefectRateData = { ...this.DefectRateData };
                 
                 // 工場全体の生産進捗勝ち負け表示
-                this.displayResult(daycount);
+                // this.displayResult(daycount);
+                this.displayProdResult(PlanTotal,ProgTotal);
             },
             error: (err) => console.error(err),
             });
@@ -1134,6 +1152,17 @@ export class KpiComponent implements OnInit, OnDestroy{
 
         }
 
+    }
+
+    displayProdResult(PlanTotal:number,ProgTotal:number){
+        if(PlanTotal>ProgTotal){
+            this.judge = '✖';
+            this.delta = Math.floor(PlanTotal-ProgTotal);
+        }
+        else{
+            this.judge = '〇';
+            this.delta = Math.floor(ProgTotal - PlanTotal);
+        }
     }
 
 }
