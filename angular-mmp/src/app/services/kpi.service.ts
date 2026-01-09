@@ -56,6 +56,15 @@ export class KpiService {
     
   }
 
+  // フィルタリングした鍛造の生産勝ち負け
+  getForgingTotal_filter(factory: number =0,machine: string='',day: number=0,firstday: string='',today: string=''): Observable<any>{
+    const url = `${this.apiURL}/kpi/forging_filter?factory=${factory}&machine=${machine}&day=${day}&firstday=${firstday}&today=${today}`;
+    return this.http.get<any>(url).pipe(
+        map((res) => res as any)    
+    );
+    
+  }
+
   // 切削のKPIデータ取得
   getMachiningKPI(factory: number =0,parts_no: string='',line_no: string='', date: string=''): Observable<any>{
     const url = `${this.apiURL}/kpi/machining?factory=${factory}&parts_no=${parts_no}&line_no=${line_no}&date=${date}`;
@@ -68,6 +77,15 @@ export class KpiService {
   //切削の工場全体での生産勝ち負け
   getMachiningTotal_factory(factory: number =0,firstday: string ='',today: string=''): Observable<any>{
     const url = `${this.apiURL}/kpi/machining_factory?factory=${factory}&firstday=${firstday}&today=${today}`;
+    return this.http.get<any>(url).pipe(
+        map((res) => res as any)    
+    );
+    
+  }
+
+  //フィルタリングした切削の生産勝ち負け
+  getMachiningTotal_filter(factory: number =0,parts: string ='',line: string ='',firstday: string ='',today: string=''): Observable<any>{
+    const url = `${this.apiURL}/kpi/machining_filter?factory=${factory}&parts=${parts}&line=${line}&firstday=${firstday}&today=${today}`;
     return this.http.get<any>(url).pipe(
         map((res) => res as any)    
     );

@@ -34,7 +34,6 @@ export class KpiService {
   async getPartsNoSummary_type(factory: number,type: number){
   // 鍛造
   if(type == 0){
-    //console.log(`forging`);
     const query = await this.ForgingRepo
       .createQueryBuilder('m')
       .select('m.parts_no AS parts_no')
@@ -45,7 +44,6 @@ export class KpiService {
     }
   // 切削
   else if(type == 1){
-    //console.log(`machining`);
     const query = await this.MachiningRepo
       .createQueryBuilder('m')
       .select('m.parts_no AS parts_no')
@@ -202,13 +200,48 @@ export class KpiService {
         return Number(result?.good_prod ?? 0);
   }
 
+  // フィルタリングした鍛造の累積生産計画数を取得
+  async getTotalForginPlan_filter(factory: number, machine: string, day: number){
+      const query = await this.FPlanRepo
+      .createQueryBuilder('m')
+        .select('SUM(m.target_prod) AS target_prod')
+        .where('m.factory_type = :factory',{factory})
+        .andWhere('m.day < :day',{day})
+        // 設備指定ありの場合は条件追加
+        if(machine !== 'all'){
+          query.andWhere('m.machine_name = :machine',{machine})
+        }
+        const result = await query.getRawOne();
+        return Number(result?.target_prod ?? 0);
+
+  }
+
+  // フィルタリングした鍛造の累積良品数を取得
+  async getTotalForgingProgress_filter(factory: number, machine: string, firstday: string, today: string){
+      const query = await this.ForgingRepo
+      .createQueryBuilder('m')
+        .select('SUM(m.good_prod) AS good_prod')
+        .where('m.factory_type = :factory',{factory})
+        .andWhere('m.prod_date >= :firstday',{firstday})
+        .andWhere('m.prod_date < :today',{today})
+        // 設備指定ありの場合は条件追加
+        if(machine !== 'all'){
+          query.andWhere('m.machine_name = :machine',{machine})
+        }
+        const result = await query.getRawOne();
+        return Number(result?.good_prod ?? 0);
+        
+  }
+
   // 切削の生産計画取得
-  async getMachiningPlan(factory: number, parts_no: string, line_no: string){
+  async getMachiningPlan(factory: number, parts_no: string){
       // 工場内の全品番対象
       if(parts_no ==='all'){
         const query = await this.MPlanRepo
         .createQueryBuilder('m')
-        .select('SUM(m.target_prod) AS target_prod')
+        .select(['SUM(m.target_prod) AS target_prod',
+                 'SUM(m.total) AS total'
+        ])
         .where('m.factory_type = :factory',{factory})
         const result = await query.getRawMany();
         return result;
@@ -219,7 +252,9 @@ export class KpiService {
         const keyword = parts_no ?? ''; // 入力文字列
         const query = await this.MPlanRepo
         .createQueryBuilder('m')
-        .select('m.target_prod AS target_prod')
+        .select(['m.target_prod AS target_prod',
+                 'm.total AS total'
+        ])
         .where('m.factory_type = :factory',{factory})
         .andWhere('m.parts_no LIKE :parts_no', {parts_no: `%${keyword}%` });
         const result = await query.getRawMany();
@@ -295,7 +330,9 @@ export class KpiService {
   async getTotalMachiningPlan_factory(factory: number){
       const query = await this.MPlanRepo
       .createQueryBuilder('m')
-        .select('SUM(m.target_prod) AS target_prod')
+        .select(['SUM(m.target_prod) AS target_prod',
+                 'SUM(m.total) AS total'
+        ])
         .where('m.factory_type = :factory',{factory});
         const result = await query.getRawOne();
         return Number(result?.target_prod ?? 0);
@@ -315,6 +352,46 @@ export class KpiService {
 
   }
 
+  // フィルタリングした切削の累積生産計画数を取得
+  async getTotalMachiningPlan_filter(factory: number,parts_no: string){
+      const keyword = parts_no ?? '';     // 入力文字列
+      const query = await this.MPlanRepo
+      .createQueryBuilder('m')
+        .select(['SUM(m.target_prod) AS target_prod',
+                 'SUM(m.total) AS total'
+        ])
+        .where('m.factory_type = :factory',{factory})
+        if(parts_no !== 'all'){
+          query.andWhere('m.parts_no LIKE :parts_no', {parts_no: `%${keyword}%` })
+        }
+        const result = await query.getRawMany();
+        return result;
+
+  }
+
+  // フィルタリングした切削の累積生産数を取得
+  async getTotalMachiningProgress_filter(factory: number,parts_no: string,line_no: string, firstday: string, today: string){
+      const keyword = parts_no ?? ''; // 入力文字列
+      const query = await this.MachiningRepo
+      .createQueryBuilder('m')
+        .select(['SUM(m.good_prod) AS good_prod',
+                 'COUNT(*) AS record_count'
+        ])
+        .where('m.factory_type = :factory',{factory})
+        .andWhere('m.prod_date >= :firstday',{firstday})
+        .andWhere('m.prod_date < :today',{today})
+        if(parts_no !== 'all'){
+          query.andWhere('m.parts_no LIKE :parts_no', {parts_no: `%${keyword}%` })
+        }
+        if(line_no !== 'all'){
+          query.andWhere('m.line_no = :line_no',{line_no})
+        }
+        const result = await query.getRawMany();
+        return result;
+
+  }
+
+  // 切削の基準CT取得
   async getMachiningBaseCT(factory: number, parts_no: string, line_no: string){
       const keyword = parts_no ?? ''; // 入力文字列
       const query = await this.deviceRepo

@@ -124,17 +124,18 @@ export class PlanService {
     const rowsToInsert = [];                      // バルクインサート用の空配列
     // 1)テーブルデータの初期化
     await this.dataSource.query(`TRUNCATE TABLE machining_product_plan`);
-    //console.log(`Table TRUNCATE`);
-
+    
     // 2)各行をループして処理（DB保存・集計など）
     for (const row of rows) {
       const factory_type = row.factoryDivision ?? ''; // '' or undefined
       const raw_parts_no = row.A ?? null;           // string | null | undefined
+      const order = row.D ?? 0;
       const val = row.E ?? 0;                   //
       const parts_no = normalizePartNo(raw_parts_no);
       const item = {
         factory_type:factory_type ?? null,
         parts_no: parts_no ?? null,
+        total: order,
         target_prod: val, 
         updated_at: today
       };
@@ -154,15 +155,16 @@ export class PlanService {
         const tuples = rowsToInsert.map(r => [
           r.factory_type,
           r.parts_no,
+          r.total,
           r.target_prod,
           r.updated_at,
         ]);
-        const valuesSql = tuples.map(() => '(?, ?, ?, ?)').join(', ');
+        const valuesSql = tuples.map(() => '(?, ?, ?, ?, ?)').join(', ');
         // 4) INSERT IGNORE で重複時は無視（エラーにならない）
         await this.dataSource.query(
           `
           INSERT IGNORE INTO machining_product_plan
-            (factory_type, parts_no, target_prod, updated_at)
+            (factory_type, parts_no, total, target_prod, updated_at)
           VALUES
             ${valuesSql}
           `,

@@ -17,9 +17,9 @@ type PreviewType = 'forging' | 'machining' | null;
 
 // 送信&プレビュー用型定義(鍛造)
 interface ForgingRow {
-  equipmentName: string;                  // 設備名
-  cdValue: string | null;                 // 品番(安全のため空の場合は null)
-  valuesKtoAO: (number | string | null)[];   // 日ごとの生産数量
+  equipmentName: string;                      // 設備名
+  cdValue: string | null;                     // 品番(安全のため空の場合は null)
+  valuesKtoAO: (number | string | null)[];    // 日ごとの生産数量
   // ※ 抽出関数の戻り型次第で、1次元/2次元の可能性があるためユニオンに
 }
 
@@ -35,6 +35,7 @@ interface ForgingRowRaw {
 interface MachiningRow {
   factoryDivision: number | string;      // 工場区分(読み取り時は文字列の可能性があるので number へ変換)
   A: string | null;                      // 品番(安全のため空の場合は null)
+  D: number | string;                    // 切削数
   E: number | string;                    // 稼働日当たり生産数(読み取り時は文字列の可能性があるので number へ変換)
 }
 
@@ -43,6 +44,7 @@ interface MachiningRowRaw {
   sheet: string;
   row: number;
   A: any;
+  D: any;
   E: any;
   factoryDivision: number | null;
 }
@@ -63,6 +65,7 @@ interface MachiningPayload {
   rows: {
     factoryDivision: number;
     A: string;
+    D: number;
     E: number;
   }[];
 }
@@ -81,7 +84,7 @@ const FACTORY_MAP: Record<string, number> = {
 
 };
 
-const COL = { A: 0, E: 4, F: 5 } as const;
+const COL = { A: 0, D: 3, E: 4, F: 5 } as const;
 
 /** ① A/E列の「縦方向（行方向）」結合を8行目以降で解除し、結合元の値を下方向へ展開 */
 function unmergeAE_vertical(ws: XLSX.WorkSheet, startRow1Based = 8): void {
@@ -95,7 +98,7 @@ function unmergeAE_vertical(ws: XLSX.WorkSheet, startRow1Based = 8): void {
 
     // 縦方向の結合（同一列）かつ A 列または E 列のみ対象
     const isVertical = s.c === e.c;
-    const isTargetCol = (s.c === COL.A && e.c === COL.A) || (s.c === COL.E && e.c === COL.E);
+    const isTargetCol = (s.c === COL.A && e.c === COL.A) || (s.c === COL.D && e.c === COL.D) || (s.c === COL.E && e.c === COL.E);
     const touchesRowsAfterStart = e.r >= startR;
 
     if (!(isVertical && isTargetCol && touchesRowsAfterStart)) {
@@ -134,7 +137,7 @@ function getLastRow(ws: XLSX.WorkSheet): number {
 function pickAEWhereFIncludes(ws: XLSX.WorkSheet, startRow1Based = 8, keyword = '切削') {
   const startR = startRow1Based - 1;
   const endR = getLastRow(ws);
-  const out: Array<{ row: number; A: any; E: any }> = [];
+  const out: Array<{ row: number; A: any; D:any; E: any }> = [];
 
   for (let r = startR; r <= endR; r++) {
     const fAddr = XLSX.utils.encode_cell({ r, c: COL.F });
@@ -146,11 +149,13 @@ function pickAEWhereFIncludes(ws: XLSX.WorkSheet, startRow1Based = 8, keyword = 
     if (!text.includes(keyword)) continue;
 
     const aAddr = XLSX.utils.encode_cell({ r, c: COL.A });
+    const dAddr = XLSX.utils.encode_cell({ r, c: COL.D });
     const eAddr = XLSX.utils.encode_cell({ r, c: COL.E });
     const A = ws[aAddr]?.v ?? null;
+    const D = ws[dAddr]?.v ?? null;
     const E = ws[eAddr]?.v ?? null;
 
-    out.push({ row: r + 1, A, E }); // 1-based の行番号で返却
+    out.push({ row: r + 1, A, D, E }); // 1-based の行番号で返却
   }
 
   return out;
@@ -208,6 +213,7 @@ function extractRowsMachining(wb: XLSX.WorkBook, targetSheets: string[], startRo
 
       // ★ 正規化して重複キー生成（A/E の表記揺れ対策）
       const normA = normalizeForCompare(r.A);
+      const normD = normalizeForCompare(r.D);
       const normE = normalizeForCompare(r.E);
 
       // A と E が両方 null の場合は意味のある品番比較ができないため、任意で除外しても良い
@@ -225,6 +231,7 @@ function extractRowsMachining(wb: XLSX.WorkBook, targetSheets: string[], startRo
         sheet: sheetName,
         row: r.row,
         A: r.A,
+        D: r.D,
         E: r.E,
         factoryDivision,
       });
@@ -493,6 +500,7 @@ export class PlanComponent {
             const normalized: MachiningRow[] = raw.map(r => ({
               factoryDivision: r.factoryDivision ?? 0, // ★ nullを既定値に（例：0）
               A: this.toStringSafe(r.A),
+              D: this.toNumberOrZero(r.D),
               E: this.toNumberOrZero(r.E),
             }));
 
@@ -622,6 +630,7 @@ private toStringSafe(v: unknown): string {
       const machiningRows = (this.rows as MachiningRow[]).map(r => ({
         factoryDivision: this.toNumberOrZero(r.factoryDivision as any),
         A: r.A ?? '',
+        D: this.toNumberOrZero(r.D as any),
         E: this.toNumberOrZero(r.E as any),
       }));
 

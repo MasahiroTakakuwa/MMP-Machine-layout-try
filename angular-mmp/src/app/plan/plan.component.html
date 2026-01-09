@@ -45,6 +45,7 @@
         <tr>
           <th style="min-width: 90px">工場区分</th>
           <th style="min-width: 120px">品番</th>
+          <th style="min-width: 120px">切削数</th>
           <th style="min-width: 120px">受注数稼働日当たり</th>
         </tr>
       </ng-template>
@@ -52,6 +53,7 @@
         <tr>
           <td>{{ row.factoryDivision }}</td>
           <td>{{ row.A ?? '(空)' }}</td>
+          <td>{{ row.D ?? '(空)' }}</td>
           <td>{{ row.E ?? '(空)' }}</td>
         </tr>
       </ng-template>

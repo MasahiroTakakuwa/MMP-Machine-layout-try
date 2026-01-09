@@ -25,7 +25,7 @@ export const appRoutes: Routes = [
         component: AppLayout,
         children: [
             // { path: '', component: Dashboard },
-            { path: '', component: MercuryComponent },
+            { path: '', component: MercuryComponent,  },
             { path: 'uikit', loadChildren: () => import('./app/pages/uikit/uikit.routes') },
             { path: 'documentation', component: Documentation },
             { path: 'pages', loadChildren: () => import('./app/pages/pages.routes') },
@@ -42,7 +42,6 @@ export const appRoutes: Routes = [
             { path: 'account-management', component: AccountManagement },
             { path: 'plan', component: PlanComponent},
             { path: 'kpi', component: KpiComponent}
-
             // { path: 'test', component: Test},
             // { path: 'test2', component: Test2},
 
@@ -50,10 +49,10 @@ export const appRoutes: Routes = [
     },
     { path: 'landing', component: Landing },
     { path: 'notfound', component: Notfound },
-    // { 
-    //     canActivate: [NonAuthGuard],
-    //     path: 'auth', loadChildren: () => import('./app/pages/auth/auth.routes')
-    // },
+    { 
+        canActivate: [NonAuthGuard],
+        path: 'auth', loadChildren: () => import('./app/pages/auth/auth.routes')
+    },
 
     { path: '**', redirectTo: '/notfound' }
 ];

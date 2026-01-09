@@ -2,6 +2,7 @@ import { Controller, Get, Query, UseGuards } from "@nestjs/common";
 import { KpiService } from "./kpi.service";
 import { machine } from "os";
 import { AuthGuard } from "src/userManagement/auth/auth.guard";
+import { Console } from "console";
 
 // KPI表示に関係するデータを取得するAPI
 @UseGuards(AuthGuard)
@@ -57,10 +58,10 @@ export class KpiController {
                   @Query('line_no') line_no: string,
                   @Query('date') date: string
     ){
-      const MachiningPlan = await this.KpiService.getMachiningPlan(factory,parts_no,line_no);
+      const MachiningPlan = await this.KpiService.getMachiningPlan(factory,parts_no);
       const MachiningProg = await this.KpiService.getMachiningProgress(factory,parts_no,line_no,date);
       const MachiningBaseCT = await this.KpiService.getMachiningBaseCT(factory,parts_no,line_no);
-      //console.log(MachiningBaseCT);
+      
       return{
         MachiningPlan,
         MachiningProg,
@@ -69,7 +70,7 @@ export class KpiController {
       
     }
 
-    // 鍛造の工場全体の生産勝ち負け
+    // 鍛造の工場全体の生産勝ち負け(工場レイアウト用)
     @Get('forging_factory')
     async getForgingTotal_factory(@Query('factory') factory: number,
                                   @Query('day') day: number,
@@ -87,7 +88,26 @@ export class KpiController {
 
     }
 
-    // 切削の工場全体の生産勝ち負け
+    // フィルタリングした鍛造の生産勝ち負け(KPIグラフ表示用)
+    @Get('forging_filter')
+    async getForgingTotal_filter(@Query('factory') factory: number,
+                                 @Query('machine') machine: string,
+                                 @Query('day') day: number,
+                                 @Query('firstday') firstday: string,
+                                 @Query('today') today: string
+
+    ){
+      const ForgingPlan_filter = await this.KpiService.getTotalForginPlan_filter(factory,machine,day);
+      const ForgingProg_filter = await this.KpiService.getTotalForgingProgress_filter(factory,machine,firstday,today);
+
+      return{
+        ForgingPlan_filter,
+        ForgingProg_filter
+      }
+
+    }
+
+    // 切削の工場全体の生産勝ち負け(工場レイアウト用)
     @Get('machining_factory')
     async getMachiningTotal_factory(@Query('factory') factory: number,
                                     @Query('firstday') firstday: string,
@@ -100,6 +120,25 @@ export class KpiController {
       return{
         MachiningPlan_factory,
         MachiningProg_factory
+      };
+
+    }
+
+    // フィルタリングした切削の生産勝ち負け(KPIグラフ表示用)
+    @Get('machining_filter')
+    async getMachiningTotal_filter(@Query('factory') factory: number,
+                                   @Query('parts') parts: string,
+                                   @Query('line') line: string,
+                                   @Query('firstday') firstday: string,
+                                   @Query('today') today: string
+
+    ){
+      const MachiningPlan_filter = await this.KpiService.getTotalMachiningPlan_filter(factory,parts);
+      const MachiningProg_filter = await this.KpiService.getTotalMachiningProgress_filter(factory,parts,line,firstday,today);
+      console.log(MachiningPlan_filter);
+      return{
+        MachiningPlan_filter,
+        MachiningProg_filter
       };
 
     }

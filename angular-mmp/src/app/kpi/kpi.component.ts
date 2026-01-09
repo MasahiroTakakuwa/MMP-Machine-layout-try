@@ -57,14 +57,21 @@ export interface ForgingResponse {
   ForgingProg: ForgingProgItem[];
 }
 
-// 鍛造進捗勝ち負け計算用数値格納
+// 工場全体の鍛造進捗勝ち負け
 export interface ForgingTotalsResponse {
   ForgingPlan_factory: number; // 返却が数値なら number に
   ForgingProg_factory: number; // 同上
 }
 
+// フィルタリングした鍛造進捗勝ち負け
+export interface ForgingFilterResponse {
+  ForgingPlan_filter: number; // 返却が数値なら number に
+  ForgingProg_filter: number; // 同上
+}
+
 export interface MachiningPlanItem {
-  target_prod: number; // 例: 45000
+  total: number;        // 切削数
+  target_prod: number;  // 受注稼働日当たり
 }
 
 export interface MachiningProgItem {
@@ -85,10 +92,29 @@ export interface MachiningResponse {
   MachiningBaseCT: MachiningBaseCTItem[];
 }
 
-// 切削進捗勝ち負け計算用数値格納
+// 工場全体の切削進捗勝ち負け
 export interface MachiningTotalsResponse {
   MachiningPlan_factory: number; // 返却が数値なら number に
   MachiningProg_factory: number; // 同上
+}
+
+export interface MProdCountItem {
+    good_prod: number;
+    record_count: number;
+}
+
+export interface MPlanItem {
+    target_prod: number;
+    total: number;
+}
+
+// フィルタリングした切削進捗勝ち負け
+export interface MachiningFilterResponse {
+  //MachiningPlan_filter: number; // 返却が数値なら number に
+  //MachiningProg_filter: number; // 同上
+  MachiningPlan_filter: MPlanItem[];
+  MachiningProg_filter: MProdCountItem[];
+
 }
 
 // 今月1日を生成(yyyy-mm-dd形式)
@@ -208,6 +234,8 @@ export class KpiComponent implements OnInit, OnDestroy{
     machiningplans: MachiningPlanItem[] = [];
     machiningprogs: MachiningProgItem[] = [];
     machiningbaseCTs: MachiningBaseCTItem[] = [];
+    filterplan: MPlanItem[] = []; 
+    filterprod: MProdCountItem[] = [];
     weekendDays: number[] = [];     // 休日の日付を格納用
     // 生産勝ち負け表示
     judge: string = '〇';       // 生産進捗
@@ -232,11 +260,16 @@ export class KpiComponent implements OnInit, OnDestroy{
 
     // dropdownlistの初期設定
     // 品番
-    dropdownValues:  Dropdownitem[] = [];
-    dropdownValue: Dropdownitem | null = null;
+    partslistValues:  Dropdownitem[] = [];
+    partslistValue: Dropdownitem | null = null;
+    // dropdownValues:  Dropdownitem[] = [];
+    // dropdownValue: Dropdownitem | null = null;
+    
     // ラインNo・設備名
-    dropdown2Values: Dropdownitem2[] = [];
-    dropdown2Value: Dropdownitem2 | null = null;
+    machinelistValues: Dropdownitem2[] = [];
+    machinelistValue: Dropdownitem2 | null = null;
+    // dropdown2Values: Dropdownitem2[] = [];
+    // dropdown2Value: Dropdownitem2 | null = null;
 
     // Chartの初期設定
     // 生産実績
@@ -294,18 +327,18 @@ export class KpiComponent implements OnInit, OnDestroy{
                     name: item.parts_no,
                     code: item.parts_no
                 }));
-                this.dropdownValues = [fixedItem, ...dynamicItems];
+                this.partslistValues = [fixedItem, ...dynamicItems];
                                 
             });
 
         }
         else if(type == 0){
-            this.dropdownValues = [fixedItem];
+            this.partslistValues = [fixedItem];
 
         }
         // 先頭のインデックスを固定項目に設定
-        this.dropdownValue = null;
-        
+        this.partslistValue = null;
+        // this.partslistValue = this.partslistValues[0];
     }
 
     // 設備情報ドロップダウンリスト更新
@@ -314,16 +347,16 @@ export class KpiComponent implements OnInit, OnDestroy{
         const type = this.toggleValue ? 1 : 0;
         type OptionItem = {name:string;code:string};
         // 呼び出し前ガード
-        if (!this.dropdownValue || this.dropdownValue.code === undefined) {
+        if (!this.partslistValue || this.partslistValue.code === undefined) {
             // 必要なら初期化やログ
             return;
         }
         // 'all' かつ切削の場合は固定項目のみ
-        if (this.dropdownValue.code === 'all' && type == 1) {
+        if (this.partslistValue.code === 'all' && type == 1) {
             // 固定項目として全ラインを宣言
             const fixedItem = { name: '全ライン', code: 'all' };
-            this.dropdown2Values = [fixedItem];
-            this.dropdown2Value = this.dropdown2Values[0]; // ここで確実にセット
+            this.machinelistValues = [fixedItem];
+            this.machinelistValue = this.machinelistValues[0]; // ここで確実にセット
             return;
         }
         // それ以外の場合はAPI 呼び出し（items が null の場合に備えて正規化）
@@ -351,15 +384,15 @@ export class KpiComponent implements OnInit, OnDestroy{
                 dynamicItems = [];
             }
             // 固定 + 動的
-            this.dropdown2Values = [fixedItem, ...dynamicItems];
+            this.machinelistValues = [fixedItem, ...dynamicItems];
             // 先頭をデフォルト選択（配列が空でも fixedItem が入るため安全）
-            this.dropdown2Value = this.dropdown2Values[0];
+            this.machinelistValue = this.machinelistValues[0];
             },
             error: (err) => {
             console.error('getLineNo_type error:', err);
             // エラー時も安全に初期化
-            this.dropdown2Values = [fixedItem];
-            this.dropdown2Value = this.dropdown2Values[0];
+            this.machinelistValues = [fixedItem];
+            this.machinelistValue = this.machinelistValues[0];
             }
         });
         }
@@ -379,8 +412,8 @@ export class KpiComponent implements OnInit, OnDestroy{
     }
     // 品番選択後
     onPartsNoSelect() {        
-    if (this.dropdownValue && this.dropdownValue.code !== undefined) {
-        this.loadDropdownItems2(this.selectButtonValue.code, this.dropdownValue.code);
+    if (this.partslistValue && this.partslistValue.code !== undefined) {
+        this.loadDropdownItems2(this.selectButtonValue.code, this.partslistValue.code);
         }
 
     }
@@ -408,18 +441,19 @@ export class KpiComponent implements OnInit, OnDestroy{
         this.loadDropdownItems(this.selectButtonValue.code);
     }
 
-    // グラフ描画関連
     // グラフ描画
     displayCharts(){
         // UIに入力されているデータを格納
         const factory = this.selectButtonValue.code | 0;
         const type = this.toggleValue ? 1 : 0;              // 加工方法 1:切削　0:鍛造
-        let parts = this.dropdownValue?.code;               // あいまい検索用に品番の末尾の'-1'を削除
+        const machine = this.machinelistValue?.code;        // 設備
+        const date = getFirstDayOfCurrentMonthInJST();      // 今月1日をstring型で生成
+        let parts = this.partslistValue?.code;              // 品番
+        // 切削の場合、あいまい検索用に品番の末尾の'-1'を削除
         if(type == 1 && parts?.endsWith('-1')){
             parts = parts.slice(0,-2);
         }
-        const machine = this.dropdown2Value?.code;
-        const date = getFirstDayOfCurrentMonthInJST();      //今月1日をstring型で生成
+        let daycount = 0;                                   // 稼働日数(生産進捗表示に使用)
         
         // グラフ用データの格納先(1日から31日で固定)
         const progByDay: number[] = new Array(31).fill(0);      //生産実績
@@ -455,8 +489,8 @@ export class KpiComponent implements OnInit, OnDestroy{
                 this.formarplans = Array.isArray(res.ForgingPlan) ? res.ForgingPlan : [];
                 this.formarprogs = Array.isArray(res.ForgingProg) ? res.ForgingProg : [];
                 // 確認ログ
-                console.table(this.formarplans);
-                console.table(this.formarprogs);
+                // console.table(this.formarplans);
+                // console.table(this.formarprogs);
                 // 3)グラフ用データを生成
                 // 生産計画
                 for(let i=0;i<this.formarplans.length;i++){
@@ -482,8 +516,8 @@ export class KpiComponent implements OnInit, OnDestroy{
                 this.ProdChartData.datasets[0].data = planByDay;    // 生産計画
                 this.ProdChartData.datasets[1].data = progByDay;    // 生産実績
                 
-                this.OperatingRateData.datasets[0].data = targetPerplan;  // 可動率
-                this.OperatingRateData.datasets[1].data = progPerplan;  // 可動率
+                this.OperatingRateData.datasets[0].data = targetPerplan;  // 目標稼働率
+                this.OperatingRateData.datasets[1].data = progPerplan;    // 実績稼働率
 
                 this.DefectRateData.datasets[0].data = inlinedefByDay;  // 工程内不良
                 this.DefectRateData.datasets[1].data = wastedefByDay;   // 捨て打ち
@@ -492,6 +526,9 @@ export class KpiComponent implements OnInit, OnDestroy{
                 this.ProdChartData = { ...this.ProdChartData };
                 this.OperatingRateData = { ...this.OperatingRateData};
                 this.DefectRateData = { ...this.DefectRateData };
+
+                // 工場全体の生産進捗勝ち負け表示
+                this.displayResult(daycount);
             },
             error: (err) => console.error(err),
             });
@@ -506,18 +543,16 @@ export class KpiComponent implements OnInit, OnDestroy{
                 this.machiningplans = Array.isArray(res.MachiningPlan) ? res.MachiningPlan : [];
                 this.machiningprogs = Array.isArray(res.MachiningProg) ? res.MachiningProg : [];
                 this.machiningbaseCTs = Array.isArray(res.MachiningBaseCT) ? res.MachiningBaseCT : [];
-                // 確認ログ
-                console.table(this.machiningplans);
-                console.table(this.machiningprogs);
-                console.table(this.machiningbaseCTs);
-                // 3)グラフ用データを生成
+                
+                // グラフ用データを生成
                 // 生産計画(切削の生産計画は品番ごとのため、1ライン当たりの生産数を算出)
-                let lines = this.dropdown2Values.length -1 ;    // 全ラインを除外
+                let lines = this.machinelistValues.length -1 ;    // 全ラインを除外
                 if(machine === 'all'){
                     lines = 1;  // 全ラインが選択されている場合
                 }
+                const orderByMonth = this.machiningplans[0].total;    //月の切削指示数
                 const planPerline = Math.ceil(this.machiningplans[0].target_prod / lines);
-                const planByDay: number[] = new Array(31).fill(planPerline);      //日ごと生産計画数
+                let planByDay: number[] = new Array(31).fill(0);      //日ごと生産計画数
                 // 100%稼働時の生産数を基準CT+24h稼働で計算(結果はMath.floorで整数にする)
                 let prodByBaseCT = 0
                 for(let i=0;i<this.machiningbaseCTs.length;i++){
@@ -535,16 +570,20 @@ export class KpiComponent implements OnInit, OnDestroy{
                 }
                 
                 // 生産実績
+                
                 for(let n=0;n<this.machiningprogs.length;n++){
                     // 日付部分をintに変換
                     const day = parseInt(this.machiningprogs[n].prod_date.split('-')[2], 10); 
                     progByDay[day-1] = this.machiningprogs[n].good_prod;       // 良品数
+                    planByDay[day-1] = planPerline;     // 生産指示数
                     // 工程内不良は以下の部分に処理を追加
                     // progPerplan[day-1] =(progByDay[day-1]/planByDay[day-1])*100;  // 可動率
                     progPerplan[day-1] =(progByDay[day-1]/baseByDay[day-1])*100;  // 稼働率
                     targetPerplan[day-1] = 85;                                    // 目標可動率
                     inlinedefByDay[day-1] = (this.machiningprogs[n].inline_defect/this.machiningprogs[n].good_prod)*100;      // 工程内不良
                     visualdefByDay[day-1] = (this.machiningprogs[n].visual_defect/this.machiningprogs[n].good_prod)*100;         // 外観不良(捨て打ち)            
+                    // 切削稼働日を格納
+                    daycount = daycount+1;
                 }
                 // データセットに値を代入。                
                 this.ProdChartData.datasets[0].data = planByDay;    // 生産計画
@@ -559,14 +598,16 @@ export class KpiComponent implements OnInit, OnDestroy{
                 this.ProdChartData = { ...this.ProdChartData };
                 this.OperatingRateData = { ...this.OperatingRateData};
                 this.DefectRateData = { ...this.DefectRateData };
-
+                
+                // 工場全体の生産進捗勝ち負け表示
+                this.displayResult(daycount);
             },
             error: (err) => console.error(err),
             });
         }
-
+        
         // 工場全体の生産進捗勝ち負け表示
-        this.displayResult();
+        //this.displayResult(daycount);
     }
  
     // チャート初期設定
@@ -988,30 +1029,35 @@ export class KpiComponent implements OnInit, OnDestroy{
     }
 
     // 生産勝ち負け関連
-    displayResult(){
+    displayResult(daycount: number){
         // 使用する変数を取得
         const today = getTodayInJST();                          // 当日(string型)
         const firstday = getFirstDayOfCurrentMonthInJST();      // 今月1日(string型)
         const factory = this.selectButtonValue.code | 0;        // 工場区分
         const type = this.toggleValue ? 1 : 0;                  // 加工方法 1:切削　0:鍛造
         const daynumber = new Date().getDate();                 // 今日の日にち(number型)
-        const daycount = getWeekdaysThisMonthUntilYesterday();  // 今月の今日までの平日数
-
-        // 累積の生産計画数と良品数の格納先を宣言
-        let PlanTotal = 0;
-        let ProgTotal = 0;
+        // const daycount = getWeekdaysThisMonthUntilYesterday();  // 今月の今日までの平日数
+        let parts = this.partslistValue?.code;                  // 選択している品番
+        let machine = this.machinelistValue?.code;              // 選択している設備・ラインNo
+        let PlanTotal = 0;                                      // 累積計画生産数
+        let ProgTotal = 0;                                      // 累積良品生産数
+        // 切削の場合、あいまい検索用に品番の末尾の'-1'を削除
+        if(type == 1 && parts?.endsWith('-1')){
+            parts = parts.slice(0,-2);
+        }
+        // 鍛造
         if(type == 0){
-            this.kpiService.getForgingTotal_factory(factory,daynumber,firstday,today).subscribe({
-                next: (res: ForgingTotalsResponse) => {
-                    PlanTotal = Number(res.ForgingPlan_factory);
-                    ProgTotal = Number(res.ForgingProg_factory);
+            this.kpiService.getForgingTotal_filter(factory,machine,daynumber,firstday,today).subscribe({
+                next: (res: ForgingFilterResponse) => {
+                    PlanTotal = Number(res.ForgingPlan_filter);
+                    ProgTotal = Number(res.ForgingProg_filter);
                     if(PlanTotal>ProgTotal){
                         this.judge = '✖';
-                        this.delta = PlanTotal-ProgTotal;
+                        this.delta = Math.floor(PlanTotal-ProgTotal);
                     }
                     else{
                         this.judge = '〇';
-                        this.delta = ProgTotal - PlanTotal;
+                        this.delta = Math.floor(ProgTotal-PlanTotal);
                     }
                     
                     // console.log('FPlan:',PlanTotal);
@@ -1029,25 +1075,52 @@ export class KpiComponent implements OnInit, OnDestroy{
             
             
         }
+        // 切削
         else if(type == 1){
-            let PlanTotalPerday = 0;
-            this.kpiService.getMachiningTotal_factory(factory,firstday,today).subscribe({
-                next: (res: MachiningTotalsResponse) => {
-                    PlanTotalPerday = Number(res.MachiningPlan_factory);
-                    PlanTotal = PlanTotalPerday * daycount;
-                    ProgTotal = Number(res.MachiningProg_factory);
-                    if(PlanTotal>ProgTotal){
-                        this.judge = '✖';
-                        this.delta = PlanTotal-ProgTotal;
+            let PlanTotalPerday = 0;        // 稼働日当たりの累積生産数
+            let OrderTotalByMonth = 0;      // 月の切削指示数の合計
+            this.kpiService.getMachiningTotal_filter(factory,parts,machine,firstday,today).subscribe({
+                next: (res: MachiningFilterResponse) => {
+                    // --- アクセス方法 ---
+                this.filterplan = Array.isArray(res.MachiningPlan_filter) ? res.MachiningPlan_filter : [];
+                this.filterprod = Array.isArray(res.MachiningProg_filter) ? res.MachiningProg_filter : [];
+                
+                PlanTotalPerday = this.filterplan[0].target_prod;
+                OrderTotalByMonth = this.filterplan[0].total;
+                
+                // 品番指定ありの場合、分岐
+                if(parts !== 'all'){
+                // 生産計画(切削の生産計画は品番ごとのため、1ライン当たりの生産数を算出)
+                    let lines = this.machinelistValues.length -1 ;    // 全ラインを除外
+                    // 全ラインが選択されている場合
+                    if(machine === 'all'){
+                        lines = 1;  
                     }
-                    else{
-                        this.judge = '〇';
-                        this.delta = ProgTotal - PlanTotal;
-                    }
-                    // console.log('MPlan:',PlanTotal);
-                    // console.log('Mgood:',ProgTotal);
+                    PlanTotalPerday = Math.ceil(PlanTotalPerday/lines);
+                
+                }
+                
+                let record = this.filterprod[0].record_count;
+                if(machine === 'all'){
+                    record = record / (this.machinelistValues.length -1);
+                }
+                // PlanTotal = PlanTotalPerday * record;
+                PlanTotal = PlanTotalPerday * daycount;
+                ProgTotal = this.filterprod[0].good_prod;
+                
+                if(PlanTotal>OrderTotalByMonth){
+                    PlanTotal = OrderTotalByMonth;
+                }
+                if(PlanTotal>ProgTotal){
+                    this.judge = '✖';
+                    this.delta = Math.floor(PlanTotal-ProgTotal);
+                }
+                else{
+                    this.judge = '〇';
+                    this.delta = Math.floor(ProgTotal - PlanTotal);
+                }
 
-                },
+            },
                 
                 error: (err) => {
                         console.error('getMachiningTotal_factory error:', err);

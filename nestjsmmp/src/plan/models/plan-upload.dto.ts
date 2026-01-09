@@ -32,10 +32,13 @@ export class MachingRowDto {
   factoryDivision?: number;       // フロントでは '' を送っている → string でOK
 
   @IsString()
-  A?: string | null;      // null 許容なら optional + union で運用（実運用では null は DTO上 string | null として扱うか、string | undefined に寄せる）
+  A?: string | null;      //A列(品番) null 許容なら optional + union で運用（実運用では null は DTO上 string | null として扱うか、string | undefined に寄せる）
 
   @IsInt()
-  E!: number;     // ★ 2次元（1行分の系列を配列で包んだ形）
+  D!: number;             //D列(切削数)
+  
+  @IsInt()
+  E!: number;             //E列(受注数稼働日あたり) ★ 2次元（1行分の系列を配列で包んだ形）
 }
 
 export class MachiningUploadDto {
