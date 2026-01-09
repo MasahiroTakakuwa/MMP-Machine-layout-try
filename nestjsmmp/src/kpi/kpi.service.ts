@@ -63,7 +63,6 @@ export class KpiService {
       .select('m.machine_name AS machine_name')
       .groupBy('m.machine_name')
       .where('m.factory_type = :factory', {factory});
-      // .andWhere('m.parts_no = :parts_no',{parts_no});
       const result = await query.getRawMany();
       return result;      
     }
@@ -74,7 +73,8 @@ export class KpiService {
       .select('m.line_no AS line_no')
       .groupBy('m.line_no')
       .where('m.factory_type = :factory', {factory})
-      .andWhere('m.parts_no = :parts_no',{parts_no});
+      .andWhere('m.parts_no = :parts_no',{parts_no})
+      .andWhere('m.line_no NOT LIKE :underbarZero',{underbarZero:'%\\_0'});
       const result = await query.getRawMany();
       return result;
     
@@ -277,6 +277,7 @@ export class KpiService {
         ])
         .where('m.factory_type = :factory',{factory})
         .andWhere('m.prod_date >= :date',{date})
+        .andWhere('m.line_no NOT LIKE :underbarZero',{underbarZero:'%\\_0'})
         .groupBy('m.prod_date')
         .orderBy('m.prod_date');
         const result = await query.getRawMany();
@@ -295,8 +296,8 @@ export class KpiService {
         ])
         .where('m.factory_type = :factory',{factory})
         .andWhere('m.parts_no LIKE :parts_no', {parts_no: `%${keyword}%` })
-        //.andWhere('m.line_no = :line_no',{line_no})
         .andWhere('m.prod_date >= :date',{date})
+        .andWhere('m.line_no NOT LIKE :underbarZero',{underbarZero:'%\\_0'})
         .groupBy('m.prod_date')
         .orderBy('m.prod_date');
         const result = await query.getRawMany();
@@ -317,6 +318,7 @@ export class KpiService {
         .andWhere('m.parts_no LIKE :parts_no', {parts_no: `%${keyword}%` })
         .andWhere('m.line_no = :line_no',{line_no})
         .andWhere('m.prod_date >= :date',{date})
+        .andWhere('m.line_no NOT LIKE :underbarZero',{underbarZero:'%\\_0'})
         .groupBy('m.prod_date')
         .orderBy('m.prod_date');
         const result = await query.getRawMany();
@@ -346,7 +348,8 @@ export class KpiService {
         .select('SUM(m.good_prod) AS good_prod')
         .where('m.factory_type = :factory',{factory})
         .andWhere('m.prod_date >= :firstday',{firstday})
-        .andWhere('m.prod_date < :today',{today});
+        .andWhere('m.prod_date < :today',{today})
+        .andWhere('m.line_no NOT LIKE :underbarZero',{underbarZero:'%\\_0'});
         const result = await query.getRawOne();
         return Number(result?.good_prod ?? 0);
 
@@ -380,6 +383,7 @@ export class KpiService {
         .where('m.factory_type = :factory',{factory})
         .andWhere('m.prod_date >= :firstday',{firstday})
         .andWhere('m.prod_date < :today',{today})
+        .andWhere('m.line_no NOT LIKE :underbarZero',{underbarZero:'%\\_0'})
         if(parts_no !== 'all'){
           query.andWhere('m.parts_no LIKE :parts_no', {parts_no: `%${keyword}%` })
         }
