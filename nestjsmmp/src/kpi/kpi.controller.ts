@@ -5,7 +5,7 @@ import { AuthGuard } from "src/userManagement/auth/auth.guard";
 import { Console } from "console";
 
 // KPI表示に関係するデータを取得するAPI
-@UseGuards(AuthGuard)
+//@UseGuards(AuthGuard)
 @Controller('kpi')
 export class KpiController {
     constructor(private readonly KpiService: KpiService) {}
@@ -15,7 +15,13 @@ export class KpiController {
     ){
       return this.KpiService.getPartsNoSummary_type(factory,type);
     }
-    
+
+    // 対象工場の品番・品名を取得
+    @Get('parts')
+    getPartsList(@Query('factory') factory: number){
+      return this.KpiService.getPartslist(factory)
+    }
+
     // 対象製品の加工設備・ラインNoを取得
     @Get('lineno')
     getLineNo(@Query('factory') factory: number,

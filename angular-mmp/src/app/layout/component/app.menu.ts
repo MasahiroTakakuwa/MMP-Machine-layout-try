@@ -222,6 +222,101 @@ export class AppMenu {
             //         }
             //     ]
             // },
+            // トライ(階層選択で工場→レイアウト・KPI)
+            // KPI画面はルートパラメータで渡す。
+            {
+                label: '工場選択',
+                items: [
+                    {
+                        label: '🪐 Mercury',
+                        items: [
+                            {
+                                label: '🗺️ レイアウト',
+                                routerLink: ['/mercury']
+
+                            },
+                            {
+                                label: 'KPI',
+                                icon: 'pi pi-fw pi-chart-bar',
+                                routerLink: ['/kpi','mercury']
+                                
+                            },
+                            {
+                                label: 'スケジューラー',
+                                icon: 'pi pi-fw pi-chart-bar',
+                                routerLink: ['/scheduler','mercury']
+                                
+                            }
+                        ]
+                    },
+                    {
+                        label: '🌎 Tierra',
+                        items: [
+                            {
+                                label: '🗺️ レイアウト',
+                                routerLink: ['/tierra']
+
+                            },
+                            {
+                                label: 'KPI',
+                                icon: 'pi pi-fw pi-chart-bar',
+                                routerLink: ['/kpi','tierra']
+                                
+                            }
+                        ]
+                    },
+                    {
+                        label: '🌎 Tierra2',
+                        items: [
+                            {
+                                label: '🗺️ レイアウト',
+                                routerLink: ['/tierra2']
+
+                            },
+                            {
+                                label: 'KPI',
+                                icon: 'pi pi-fw pi-chart-bar',
+                                routerLink: ['/kpi','tierra2']
+                                
+                            }
+                        ]
+                    },
+                    {
+                        label: '🪐 Jupiter',
+                        items: [
+                            {
+                                label: '🗺️ レイアウト',
+                                routerLink: ['/jupiter']
+
+                            },
+                            {
+                                label: 'KPI',
+                                icon: 'pi pi-fw pi-chart-bar',
+                                routerLink: ['/kpi','jupiter']
+                                
+                            }
+                        ]
+                    },
+                    {
+                        label: '🪐 Saturn',
+                        items: [
+                            {
+                                label: '🗺️ レイアウト',
+                                routerLink: ['/saturn']
+
+                            },
+                            {
+                                label: 'KPI',
+                                icon: 'pi pi-fw pi-chart-bar',
+                                routerLink: ['/kpi','saturn']
+                                
+                            }
+                        ]
+                    }
+                ]
+            },
+            
+            // ここまで
             // Get Started
             // {
             //     label: 'Get Started',

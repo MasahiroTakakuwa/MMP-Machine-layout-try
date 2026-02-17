@@ -16,7 +16,7 @@ import { Controller, Get, Query, UseGuards } from '@nestjs/common';
 import { MachineService } from './machine.service';
 import { AuthGuard } from 'src/userManagement/auth/auth.guard';
 
-@UseGuards(AuthGuard)
+//@UseGuards(AuthGuard)
 @Controller('machine')
 export class MachineController {
   constructor(private readonly machineService: MachineService) {}

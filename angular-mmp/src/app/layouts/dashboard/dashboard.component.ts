@@ -10,12 +10,14 @@
 //         工場画面の手動および自動切替ロジックを実装します。
 // ==============================================================================
 
-import { Component, OnInit } from '@angular/core';
+import { Component, OnInit, OnDestroy, ChangeDetectionStrategy, DestroyRef, Inject, NgZone, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RouterModule, Router, NavigationEnd } from '@angular/router';
 import { FormsModule } from '@angular/forms'; // ✅ Bắt buộc để dùng [(ngModel)]
 // ✅ 🇻🇳 Cần thiết để dùng two-way binding [(ngModel)] trong HTML
 //    🇯🇵 テンプレート内で[(ngModel)]を使うために必要
+import { filter } from 'rxjs/operators';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 
 @Component({
   selector: 'app-dashboard',
@@ -23,9 +25,11 @@ import { FormsModule } from '@angular/forms'; // ✅ Bắt buộc để dùng [(
   imports: [CommonModule, RouterModule, FormsModule],
   templateUrl: './dashboard.component.html',
   styleUrls: ['./dashboard.component.scss'],
-})
-export class DashboardComponent implements OnInit {
+  changeDetection: ChangeDetectionStrategy.OnPush,
 
+})
+export class DashboardComponent implements OnInit, OnDestroy {
+  
   isSidebarOpen: boolean = true;           // Thêm biến quản lý đóng mở Sidebar
 
   currentFactory: string = '';             // 🇻🇳 Nhà máy hiện tại đang chọn
@@ -38,28 +42,46 @@ export class DashboardComponent implements OnInit {
   // 🇻🇳 Danh sách các nhà máy có thể luân chuyển
   // 🇯🇵 自動切替で巡回する工場のリスト
 
+  private destroyedRef = inject(DestroyRef);
+  private ngZone = inject(NgZone);
+
   constructor(private router: Router) {}
 
   ngOnInit(): void {
     // Mặc định thu gọn sidebar nếu là màn hình nhỏ
     this.isSidebarOpen = window.innerWidth >= 768; // md breakpoint của Tailwind = 768px
 
-    // 🇻🇳 Gán route hiện tại để highlight menu
-    // 🇯🇵 現在のルートを取得してメニューにハイライトを設定
-    this.router.events.subscribe(event => {
-      if (event instanceof NavigationEnd) {
-        const segments = event.urlAfterRedirects.split('/');
-        this.currentFactory = segments[1];
-      }
+    // // 🇻🇳 Gán route hiện tại để highlight menu
+    // // 🇯🇵 現在のルートを取得してメニューにハイライトを設定
+    // this.router.events.subscribe(event => {
+    //   if (event instanceof NavigationEnd) {
+    //     const segments = event.urlAfterRedirects.split('/');
+    //     this.currentFactory = segments[1];
+    //   }
+    // });
+
+    // // 🇻🇳 Đọc trạng thái công tắc từ localStorage
+    // // 🇯🇵 localStorageから自動切替の状態を読み込む
+    // const savedState = localStorage.getItem('autoSwitchEnabled');
+    // if (savedState === 'true') {
+    //   this.autoSwitchEnabled = true;
+    //   this.startAutoSwitch();
+    // }
+
+  // ✅ takeUntil(destroy$) で購読解除
+    this.router.events.pipe(
+      filter(e => e instanceof NavigationEnd),
+      takeUntilDestroyed(this.destroyedRef),
+    ).subscribe((e) => {
+      const url = (e as NavigationEnd).urlAfterRedirects;
+      const segments = url.split('/');
+      this.currentFactory = segments[1] ?? '';
     });
 
-    // 🇻🇳 Đọc trạng thái công tắc từ localStorage
-    // 🇯🇵 localStorageから自動切替の状態を読み込む
     const savedState = localStorage.getItem('autoSwitchEnabled');
-    if (savedState === 'true') {
-      this.autoSwitchEnabled = true;
-      this.startAutoSwitch();
-    }
+    this.autoSwitchEnabled = savedState === 'true';
+    if (this.autoSwitchEnabled) this.startAutoSwitch();
+
   }
 
   // Hành động đóng mở Sidebar
@@ -86,19 +108,53 @@ export class DashboardComponent implements OnInit {
 
   // 🇻🇳 Bắt đầu luân chuyển giữa các nhà máy
   // 🇯🇵 工場の自動巡回を開始
+  // startAutoSwitch(): void {
+  //   let currentIndex = this.factoryList.indexOf(this.currentFactory);
+  //   this.autoSwitchInterval = setInterval(() => {
+  //     currentIndex = (currentIndex + 1) % this.factoryList.length;
+  //     this.router.navigate([this.factoryList[currentIndex]]);
+  //   }, 30000); // 🇻🇳 Mỗi 30 giây | 🇯🇵 30秒ごと
+  // }
+  
   startAutoSwitch(): void {
-    let currentIndex = this.factoryList.indexOf(this.currentFactory);
-    this.autoSwitchInterval = setInterval(() => {
-      currentIndex = (currentIndex + 1) % this.factoryList.length;
-      this.router.navigate([this.factoryList[currentIndex]]);
-    }, 30000); // 🇻🇳 Mỗi 30 giây | 🇯🇵 30秒ごと
+    // ✅ 二重起動を防ぐ
+    if (this.autoSwitchInterval != null) {
+      clearInterval(this.autoSwitchInterval);
+      this.autoSwitchInterval = null;
+    }
+
+    let currentIndex = Math.max(this.factoryList.indexOf(this.currentFactory), 0);
+
+    // ✅ ゾーン外で Interval（CD/ゾーンの負担軽減）
+    this.ngZone.runOutsideAngular(() => {
+      this.autoSwitchInterval = window.setInterval(() => {
+        currentIndex = (currentIndex + 1) % this.factoryList.length;
+        const next = this.factoryList[currentIndex];
+        // 実際の遷移はゾーン内へ戻す
+        this.ngZone.run(() => this.router.navigate([`/${next}`]));
+      }, 30_000);
+    });
   }
 
   // 🇻🇳 Dừng tự động luân chuyển
   // 🇯🇵 自動切替を停止する
+  // stopAutoSwitch(): void {
+  //   if (this.autoSwitchInterval) {
+  //     clearInterval(this.autoSwitchInterval);
+  //   }
+  // }
+  
   stopAutoSwitch(): void {
-    if (this.autoSwitchInterval) {
+    if (this.autoSwitchInterval != null) {
       clearInterval(this.autoSwitchInterval);
+      this.autoSwitchInterval = null;
     }
   }
+
+  ngOnDestroy(): void {
+    // ✅ 破棄時に必ず Interval 停止（リーク防止）
+    this.stopAutoSwitch();
+    // router.events は takeUntilDestroyed により自動解除
+  }
+
 }

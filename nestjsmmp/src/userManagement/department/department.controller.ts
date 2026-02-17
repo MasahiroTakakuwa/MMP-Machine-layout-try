@@ -18,7 +18,7 @@ export class DepartmentController {
     // Create a new department
     @Post()
     @HasPermission(6)
-    @UseGuards(AuthGuard)
+    //@UseGuards(AuthGuard)
     async create(@Body() dto: CreateDepartmentDto, @Req() request: Request): Promise<Department> {
         return this.departmentService.createDepartment(dto, request);
     }
@@ -40,7 +40,7 @@ export class DepartmentController {
     // Update department by id
     @Put(':id')
     @HasPermission(6)
-    @UseGuards(AuthGuard)
+    //@UseGuards(AuthGuard)
     update(
         @Param('id') id: string,
         @Body() dto: UpdateDepartmentDto,
@@ -53,7 +53,7 @@ export class DepartmentController {
     // Delete department by id
     @Delete(':id')
     @HasPermission(6)
-    @UseGuards(AuthGuard)
+    //@UseGuards(AuthGuard)
     remove(@Param('id') id: string, @Req() request: Request) {
         return this.departmentService.deleteDepartment(+id, request);
     }

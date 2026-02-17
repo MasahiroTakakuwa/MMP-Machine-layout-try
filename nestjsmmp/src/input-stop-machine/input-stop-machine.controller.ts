@@ -4,7 +4,7 @@ import { SaveScheduleStopMachineDto } from './models/save-schedule-stop-machine.
 import { AuthGuard } from 'src/userManagement/auth/auth.guard';
 import { HasPermission } from 'src/userManagement/permission/has-permission.decorator';
 
-@UseGuards(AuthGuard) //Khiên bắt đăng nhập, khi đặt ở đây sẽ áp dụng cho tất cả api trong file này
+//@UseGuards(AuthGuard) //Khiên bắt đăng nhập, khi đặt ở đây sẽ áp dụng cho tất cả api trong file này
 @Controller('input-stop-machine')
 export class InputStopMachineController {
     constructor(

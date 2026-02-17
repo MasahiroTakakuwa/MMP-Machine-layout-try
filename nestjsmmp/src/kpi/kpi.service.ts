@@ -8,6 +8,7 @@ import { MachiningPlan } from "./models/machining-product-plan.entity";
 import { ForgingPlan } from "./models/forging-product-plan.entity";
 import { InjectRepository } from "@nestjs/typeorm";
 import { MachineStatusHistory } from "./models/machine-status-history.entity";
+import { Parts } from "./models/parts.entity";
 import { query } from "express";
 
 @Injectable()
@@ -27,7 +28,9 @@ export class KpiService {
     @InjectRepository(ForgingPlan)
     private readonly FPlanRepo: Repository<ForgingKpi>,
     @InjectRepository(MachineStatusHistory)
-    private readonly statusRepo: Repository<MachineStatusHistory>
+    private readonly statusRepo: Repository<MachineStatusHistory>,
+    @InjectRepository(Parts)
+    private readonly PartsRepo: Repository<Parts>
   ){}
 
   // 指定された工場・加工方法の品番一覧を取得
@@ -52,6 +55,7 @@ export class KpiService {
       .andWhere('m.machine_name != :name',{name:'N100'});
       const result = await query.getRawMany();
       return result;
+    
   }
   
 }
@@ -80,6 +84,19 @@ export class KpiService {
       return result;
     
     }
+
+  }
+
+  // 指定の工場の品番・品名を取得
+  async getPartslist(factory: number){
+    const query = await this.PartsRepo
+      .createQueryBuilder('m')
+      .select(['m.parts_no AS parts_no',
+               'm.parts_name AS parts_name'
+      ])
+      .where('m.factory_type = :factory', {factory});
+      const result = await query.getRawMany();
+      return result;
 
   }
 

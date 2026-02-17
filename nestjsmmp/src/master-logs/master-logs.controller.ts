@@ -6,7 +6,7 @@ import { LogsService } from './master-logs.service';
 import { Request } from 'express';
 
 @UseInterceptors(ClassSerializerInterceptor)
-@UseGuards(AuthGuard)
+//@UseGuards(AuthGuard)
 @Controller('logs')
 export class LogsController {
     constructor( 

@@ -9,7 +9,7 @@ import { Request } from 'express';
 import { UpdateUserDto } from './models/update-user.dto';
 
 @UseInterceptors(ClassSerializerInterceptor)
-@UseGuards(AuthGuard)
+//@UseGuards(AuthGuard)
 @Controller('users')
 export class UserController {
 

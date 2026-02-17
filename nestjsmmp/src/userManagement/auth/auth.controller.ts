@@ -35,7 +35,7 @@ export class AuthController {
     }
 
     //Get info user by token
-    @UseGuards(AuthGuard)
+    //@UseGuards(AuthGuard)
     @Get('user')
     async user(@Req() request: Request){
         return this.userService.findOneRequest(request);

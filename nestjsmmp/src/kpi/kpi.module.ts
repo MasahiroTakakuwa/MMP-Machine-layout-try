@@ -11,12 +11,13 @@ import { KpiService } from "./kpi.service";
 import { MachineStatusHistory } from "./models/machine-status-history.entity";
 import { AuthModule } from "src/userManagement/auth/auth.module";
 import { CommonModule } from "src/userManagement/common/common.module";
+import { Parts } from "./models/parts.entity";
 
 @Module({
     imports: [TypeOrmModule.forFeature([Devices]),TypeOrmModule.forFeature([ProductHistory]),
               TypeOrmModule.forFeature([MachiningKpi]),TypeOrmModule.forFeature([ForgingKpi]),
               TypeOrmModule.forFeature([MachiningPlan]),TypeOrmModule.forFeature([ForgingPlan]),
-              TypeOrmModule.forFeature([MachineStatusHistory]),
+              TypeOrmModule.forFeature([MachineStatusHistory]),TypeOrmModule.forFeature([Parts]),
               AuthModule,CommonModule],
     controllers: [KpiController],
     providers: [KpiService],

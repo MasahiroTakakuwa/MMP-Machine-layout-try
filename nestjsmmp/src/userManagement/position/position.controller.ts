@@ -18,7 +18,7 @@ export class PositionController {
     // Create a new department
     @Post()
     @HasPermission(10)
-    @UseGuards(AuthGuard)
+    //@UseGuards(AuthGuard)
     async create(@Body() dto: CreatePositionDto, @Req() request: Request):Promise<Position> {
         return this.positionService.createPosition(dto, request);
     }
@@ -40,7 +40,7 @@ export class PositionController {
     //update a department by id
     @Put(':id')
     @HasPermission(10)
-    @UseGuards(AuthGuard)
+    //@UseGuards(AuthGuard)
     async update(@Param('id') id: string, @Body() dto: UpdatePositionDto, @Req() request: Request): Promise<Position> {
         return this.positionService.updatePosition(+id, dto, request);
     }
@@ -48,7 +48,7 @@ export class PositionController {
     //Delete a department by id
     @Delete(':id')
     @HasPermission(10)
-    @UseGuards(AuthGuard)
+    //@UseGuards(AuthGuard)
     async remove(@Param('id') id: string, @Req() request: Request) {
         return this.positionService.deletePosition(+id, request);
     }

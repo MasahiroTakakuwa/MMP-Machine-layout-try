@@ -1,0 +1,67 @@
+<p-toast position="top-right" key="test" appendTo="body"></p-toast>
+
+<p-fluid class="grid grid-cols-12 gap-8 px-4">
+    <div class="col-span-12 xl:col-span-12">
+        <div class="card">
+            <div class="p-formgroup-inline flex flex-wrap gap-3 align-items-center">
+                <div class="flex align-items-center gap-2">
+                    <div class="font-semibold text-2xl">品番</div>
+                    <!-- <p-dropdown [(ngModel)]="partslistValue" [options]="partslistValues" optionLabel="name" placeholder="Select"
+                    (onChange)="onPartsNoSelect()"/> -->
+                    <p-dropdown [(ngModel)]="partslistValue" [options]="partslistValues"
+                                [filter]="true" [filterBy]="'name,code'"
+                                 placeholder="Select" [showClear]="true"
+                    >
+                    
+                    <!-- 候補の行（ドロップダウン内） -->
+                    <ng-template let-item pTemplate="item">
+                    <div class="flex align-items-center gap-2">
+                        <span class="font-medium">{{ item.name }}</span>
+                        <span class="text-500">({{ item.code }})</span>
+                    </div>
+                    </ng-template>
+
+                    <!-- 選択後にボックス内へ表示する内容 -->
+                    <ng-template let-item pTemplate="selectedItem">
+                    <span *ngIf="item; else placeholderTpl">
+                        {{ item.name }} ({{ item.code }})
+                    </span>
+                    </ng-template>
+
+                    <!-- 未選択時の表示（任意） -->
+                    <ng-template #placeholderTpl>
+                    <span class="text-500">{{ 'Select' }}</span>
+                    </ng-template>
+                    </p-dropdown>
+                </div>
+                <div class="flex align-items-center gap-2">
+                    <div class="font-semibold text-2xl">設備</div>
+                    <p-dropdown [(ngModel)]="machinelistValue" [options]="machinelistValues" optionLabel="name" placeholder="Select"/>
+                </div>
+                
+           </div>
+        </div>
+    </div>
+            
+    <div class="col-span-12 xl:col-span-12">
+        <div class="card">
+            
+            <div class="font-semibold text-2xl mb-2">生産実績[個]</div>
+            <p-chart type="bar" [data]="ProdChartData" [options]="ProdChartOptions" style="height: 550px;"></p-chart>
+        </div>
+    </div>
+
+    <div class="col-span-12 xl:col-span-12">
+        <div class="card">        
+            <div class="font-semibold text-2xl mb-2">稼働率[%]</div>
+            <p-chart type="bar" [data]="OperatingRateData" [options]="OperatingRateOptions" style="height: 550px;"></p-chart>
+        </div>
+    </div>
+
+    <div class="col-span-12 xl:col-span-12">
+        <div class="card">        
+            <div class="font-semibold text-2xl mb-2">不良率[%]</div>
+            <p-chart type="bar" [data]="DefectRateData" [options]="DefectRateOptions" style="height: 550px;"></p-chart>
+        </div>
+    </div>
+</p-fluid>

@@ -17,10 +17,13 @@ import { AccountManagement } from './app/pages/account-management/accountManagem
 // import { Test2 } from './app/test2/test2.component';
 import { PlanComponent } from './app/plan/plan.component';
 import { KpiComponent } from './app/kpi/kpi.component';
+// テストのため追加
+import { UtilityKpiComponent } from './app/utilty/kpi/kpi.component';
+import { UtilitySchedulerComponent } from './app/utilty/scheduler/scheduler.component';
 
 export const appRoutes: Routes = [
     {
-        canActivate: [AuthGuard],
+        //canActivate: [AuthGuard],
         path: '',
         component: AppLayout,
         children: [
@@ -41,7 +44,10 @@ export const appRoutes: Routes = [
             { path: 'general-information', component: GeneralInformation },
             { path: 'account-management', component: AccountManagement },
             { path: 'plan', component: PlanComponent},
-            { path: 'kpi', component: KpiComponent}
+            { path: 'kpi', component: KpiComponent},
+            // 共用ページに対応するルート定義を追加。
+            { path: 'kpi/:factory', component: UtilityKpiComponent},
+            { path: 'scheduler/:factory', component: UtilitySchedulerComponent}
             // { path: 'test', component: Test},
             // { path: 'test2', component: Test2},
 

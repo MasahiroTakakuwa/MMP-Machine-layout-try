@@ -24,141 +24,27 @@ import { Machine } from '../models/machine.model';                // 📦 Import
 import { HttpClientModule } from '@angular/common/http';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
+
 import { DialogModule } from 'primeng/dialog';
-import { StatusMachineDialogComponent } from '../shared/components/status-machine-dialog/status-machine-dialog.component';
 import { DialogService, DynamicDialogRef } from 'primeng/dynamicdialog';
+import { FluidModule } from 'primeng/fluid';
+import { Table, TableModule } from 'primeng/table';
 import { Tooltip } from 'primeng/tooltip';
 import { Toast } from 'primeng/toast';
 import { MessageService } from 'primeng/api';
-import { UsersService } from '../services/users.service';
 
-import { FluidModule } from 'primeng/fluid';
-import { debounceTime, Subscription } from 'rxjs';
+import { debounceTime, Subject, timer, Subscription } from 'rxjs';
+import { takeUntil,switchMap } from 'rxjs/operators';
+
 import { LayoutService } from '../layout/service/layout.service';
-import { Table, TableModule } from 'primeng/table';
-
+import { UsersService } from '../services/users.service';
 import { KpiService } from '../services/kpi.service';
 
-// 切削進捗勝ち負け計算用数値格納
-export interface MachiningTotalsResponse {
-  MachiningPlan_factory: number; // 返却が数値なら number に
-  MachiningProg_factory: number; // 同上
-}
+import { StatusMachineDialogComponent } from '../shared/components/status-machine-dialog/status-machine-dialog.component';
+import { getFirstDayOfCurrentMonthInJST } from '../shared/utils'
+import { getPerformanceColor, countColorsFromMachines } from '../shared/utils';
 
-export interface MachiningPlanItem {
-  total: number;        // 切削数
-  target_prod: number;  // 受注稼働日当たり
-}
-
-export interface MachiningProgItem {
-  prod_date: string;   // "yyyy-MM-dd"（JST）
-  good_prod: number;
-  inline_defect: number;
-  visual_defect: number;
-}
-
-export interface MachiningBaseCTItem {
-    machine_no: number;
-    CT: number;
-}
-
-export interface MachiningResponse {
-  MachiningPlan: MachiningPlanItem[];
-  MachiningProg: MachiningProgItem[];
-  MachiningBaseCT: MachiningBaseCTItem[];
-}
-
-// 今月1日を生成(yyyy-mm-dd形式)
-export function getFirstDayOfCurrentMonthInJST(): string {
-  const now = new Date();
-  // 日本時間での年と月を取得（ローカルタイムに依存しない）
-  const parts = new Intl.DateTimeFormat('ja-JP', {
-    timeZone: 'Asia/Tokyo',
-    year: 'numeric',
-    month: 'numeric',
-  }).formatToParts(now);
-
-  const year = Number(parts.find(p => p.type === 'year')?.value);
-  const month = Number(parts.find(p => p.type === 'month')?.value);
-
-  // "yyyy-MM-dd" を手動で組み立て
-  const yyyy = String(year);
-  const mm = String(month).padStart(2, '0');
-  const dd = '01';
-
-  return `${yyyy}-${mm}-${dd}`;
-
-}
-
-// 今日の日付を生成(yyyy-mm-dd形式)
-export function getTodayInJST(): string {
-  const now = new Date();
-
-  // 日本時間での年・月・日を取得
-  const parts = new Intl.DateTimeFormat('ja-JP', {
-    timeZone: 'Asia/Tokyo',
-    year: 'numeric',
-    month: 'numeric',
-    day: 'numeric'
-  }).formatToParts(now);
-
-  const year = Number(parts.find(p => p.type === 'year')?.value);
-  const month = Number(parts.find(p => p.type === 'month')?.value);
-  const day = Number(parts.find(p => p.type === 'day')?.value);
-
-  // yyyy-MM-dd 形式に整形
-  const yyyy = String(year);
-  const mm = String(month).padStart(2, '0');
-  const dd = String(day).padStart(2, '0'); // ←ここを修正
-
-  return `${yyyy}-${mm}-${dd}`;
-}
-
-// 今月の土曜・日曜になる日付をnumberで取得
-export function getWeekendDaysOfCurrentMonth(): number[] {
-  const today = new Date();                  // ローカルタイムゾーン（例: JST）で取得
-  const year = today.getFullYear();
-  const month = today.getMonth();            // 0=Jan, 1=Feb, ...
-  const daysInMonth = new Date(year, month + 1, 0).getDate(); // 月末日(0)から日数取得
-
-  const weekendDays: number[] = [];
-
-  for (let d = 1; d <= daysInMonth; d++) {
-    const dt = new Date(year, month, d);
-    const dayOfWeek = dt.getDay();           // 0=日, 6=土
-    if (dayOfWeek === 0 || dayOfWeek === 6) {
-      weekendDays.push(d);                   // 「日にち（1..31）」を格納
-    }
-  }
-
-  return weekendDays;
-}
-
-// 任意の開始日から終了日までの平日日数をカウント
-export function countWeekdaysInclusive(startDate: Date, endDate: Date): number {
-  const start = new Date(startDate);
-  const end = new Date(endDate);
-  start.setHours(0, 0, 0, 0);
-  end.setHours(0, 0, 0, 0);
-
-  if (start > end) return 0;
-
-  let count = 0;
-  for (let d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) {
-    const day = d.getDay();
-    if (day !== 0 && day !== 6) count++;
-  }
-  return count;
-}
-
-/** 今月1日から「昨日」までの平日数を返す（今日を含めない） */
-export function getWeekdaysThisMonthUntilYesterday(now: Date = new Date()): number {
-  const year = now.getFullYear();
-  const month = now.getMonth();
-  const start = new Date(year, month, 1);
-  const yesterday = new Date(year, month, now.getDate() - 1);
-   return countWeekdaysInclusive(start, yesterday);
-}
+import { MachiningPlanItem,MachiningProgItem,MachiningBaseCTItem,MachiningResponse } from '../interface/machining';
 
 @Component({
   selector: 'app-tierra',
@@ -169,6 +55,22 @@ export function getWeekdaysThisMonthUntilYesterday(now: Date = new Date()): numb
   providers: [DialogService, MessageService]
 })
 export class TierraComponent implements OnInit, OnDestroy {
+
+  // 破棄通知用のSubject(全購読を一括解除)
+  private destroy$ = new Subject<void>();
+      
+  //subscription: Subscription;
+  constructor(  //declare service used in this component
+    private layoutService: LayoutService,
+    private machineService: MachineService,
+    public dialogService: DialogService,
+    private messageService: MessageService,
+    private userService: UsersService,
+    private kpiService: KpiService
+  ) {}
+
+  // .htmlから呼び出すため、publicで宣言
+    public getPerformanceColor = getPerformanceColor;
   // 切削生産計画・進捗データ格納
     machiningplans: MachiningPlanItem[] = [];
     machiningprogs: MachiningProgItem[] = [];
@@ -203,20 +105,6 @@ export class TierraComponent implements OnInit, OnDestroy {
     { name: this.sumCount }
     ];
 
-    subscription: Subscription;
-  constructor(  //declare service used in this component
-    private layoutService: LayoutService,
-    private machineService: MachineService,
-    public dialogService: DialogService,
-    private messageService: MessageService,
-    private userService: UsersService,
-    private kpiService: KpiService
-  ) {
-    this.subscription = this.layoutService.configUpdate$.pipe(debounceTime(25)).subscribe(() => {
-            
-        });
-  }
-
   // 🧠 🇻🇳 Mảng lưu danh sách máy được lấy từ API | 🇯🇵 APIから取得された機械のリスト
   machines: Machine[] = [];
   editMode: boolean = false; // ✅ 🇻🇳 Bật/tắt chế độ chỉnh sửa vị trí máy | 🇯🇵 位置編集モードのオン/オフ
@@ -235,29 +123,66 @@ export class TierraComponent implements OnInit, OnDestroy {
   ]
   userPermissions:any[]=[] //mảng chứa quyền của user đang đăng nhập
   
+  // ngOnInit(): void {
+  //   //gọi api lấy thông tin user
+  //   this.userService.selectedUser.subscribe(
+  //     res => {
+  //       this.userPermissions = res.permissions //trích xuất quyền của user
+  //     });
+  //   // 📥 🇻🇳 Gọi API khi component khởi tạo | 🇯🇵 コンポーネント初期化時にAPIを呼び出す
+  //   this.fetchMachines();
+
+  //   // 🧱 🇻🇳 Tạo mảng tọa độ để hiển thị lưới layout (cách 100px) | 🇯🇵 レイアウトのグリッド座標（100px間隔）を生成
+  //   this.gridX = Array.from({ length: this.svgWidth / 50 }, (_, i) => i * 100);
+  //   this.gridY = Array.from({ length: this.svgHeight / 50 }, (_, i) => i * 100);
+
+  //   // ✅ 🇻🇳 Tự động gọi lại API mỗi 5 giây để cập nhật trạng thái máy | 🇯🇵 機械の状態を定期的（5秒ごと）に更新
+  //   this.refreshIntervalId = setInterval(() => {
+  //     this.fetchMachines();
+  //   }, 15000);
+
+  //   this.displayProgResult();
+  // }
+
+  // ✅ 🇻🇳 Bật/tắt trạng thái chỉnh sửa | 🇯🇵 編集モードのON/OFF切り替え
+  
   ngOnInit(): void {
-    //gọi api lấy thông tin user
-    this.userService.selectedUser.subscribe(
-      res => {
-        this.userPermissions = res.permissions //trích xuất quyền của user
+    // 1) レイアウト変更イベント - 25msデバウンス + takeUntil でクリーンアップ
+    this.layoutService.configUpdate$.pipe(
+        debounceTime(25),takeUntil(this.destroy$)
+      )
+      .subscribe(() => {
+        // レイアウト更新に応じた処理（必要なら）
       });
-    // 📥 🇻🇳 Gọi API khi component khởi tạo | 🇯🇵 コンポーネント初期化時にAPIを呼び出す
-    this.fetchMachines();
 
-    // 🧱 🇻🇳 Tạo mảng tọa độ để hiển thị lưới layout (cách 100px) | 🇯🇵 レイアウトのグリッド座標（100px間隔）を生成
-    this.gridX = Array.from({ length: this.svgWidth / 50 }, (_, i) => i * 100);
-    this.gridY = Array.from({ length: this.svgHeight / 50 }, (_, i) => i * 100);
+    // 2) ログインユーザ権限の購読（takeUntil）
+    this.userService.selectedUser.pipe(takeUntil(this.destroy$))
+      .subscribe(res => {
+        this.userPermissions = res?.permissions ?? [];
+      });
 
-    // ✅ 🇻🇳 Tự động gọi lại API mỗi 5 giây để cập nhật trạng thái máy | 🇯🇵 機械の状態を定期的（5秒ごと）に更新
-    this.refreshIntervalId = setInterval(() => {
-      this.fetchMachines();
-    }, 15000);
+    // 3) 初回データ取得（単発）
+    this.fetchMachinesOnce();
 
-    // this.displayResult();
+    // 4) グリッド座標の生成（例）
+    this.gridX = Array.from({ length: Math.floor(this.svgWidth / 100) }, (_, i) => i * 100);
+    this.gridY = Array.from({ length: Math.floor(this.svgHeight / 100) }, (_, i) => i * 100);
+
+    // 5) 15秒おきの自動更新：setInterval の代わりに RxJS timer を使用
+    timer(0, 15000)  // すぐ実行、その後15秒ごと
+      .pipe(
+        takeUntil(this.destroy$),
+        switchMap(() => this.machineService.getMachines(4)) // 工場ID 4 (Tierra)
+      )
+      .subscribe({
+        next: (data) => this.applyMachines(data),
+        error: (err) => console.error('機械API呼び出しエラー:', err),
+      });
+
+    // 6) KPI（前日までの生産進捗表示）- 単発呼び出し
     this.displayProgResult();
   }
 
-  // ✅ 🇻🇳 Bật/tắt trạng thái chỉnh sửa | 🇯🇵 編集モードのON/OFF切り替え
   toggleEditMode(): void {
     this.editMode = !this.editMode;
   }
@@ -288,20 +213,80 @@ onWheel(event: WheelEvent): void {
 }
 
   // 🧹 🇻🇳 Dọn dẹp khi component bị hủy (ngOnDestroy) | 🇯🇵 コンポーネントが破棄されるときに実行される処理
+  // ngOnDestroy(): void {
+  //   if (this.subscription) {
+  //           this.subscription.unsubscribe();
+  //       }
+  //   if (this.refreshIntervalId) {
+  //     clearInterval(this.refreshIntervalId);
+  //   }
+  // }
+
   ngOnDestroy(): void {
-    if (this.subscription) {
-            this.subscription.unsubscribe();
-        }
-    if (this.refreshIntervalId) {
-      clearInterval(this.refreshIntervalId);
+    // 👇 すべての購読を解除
+    this.destroy$.next();
+    this.destroy$.complete();
+
+    // 👇 ダイアログが開いていれば閉じる（Primeng DynamicDialog）
+    if (this.ref_dialog) {
+      try {
+        this.ref_dialog.close();
+      } catch { /* ignore */ }
     }
+  }
+  
+  // --- データ取得ロジックを関数分離 ---
+  private fetchMachinesOnce(): void {
+    this.machineService.getMachines(4)
+      .pipe(takeUntil(this.destroy$))
+      .subscribe({
+        next: (data) => this.applyMachines(data),
+        error: (err) => console.error('機械API呼び出しエラー:', err),
+      });
+  }
+
+  private applyMachines(data: Machine[]): void {
+    this.machines = data.map(element => {
+      if (element.schedule_stop_machine) {
+        return {
+          ...element,
+          schedule_stop_machine: {
+            ...element.schedule_stop_machine,
+            shift: element.schedule_stop_machine?.shift
+              ? this.listShifts.find(e => e.id === element.schedule_stop_machine?.shift)?.name
+              : 'All day',
+            date_end: element.schedule_stop_machine?.date_end ?? 'Undetermined'
+          }
+        };
+      } else {
+        return element;
+      }
+    });
+
+    // ✅ 表示色ごとにカウント（machinesType40 を使用するなら適切にセット）
+    const colorCounts = countColorsFromMachines(this.machinesType40);
+    this.items[1].name = colorCounts['#4f6fff'] || 0;
+    this.items[3].name = colorCounts['#84ff00ff'] || 0;
+    this.items[5].name = colorCounts['#ff8080'] || 0;
+    this.items[7].name = colorCounts['#ff0000ff'] || 0;
+    this.items[9].name = colorCounts['#ccc'] || 0;
+
+    // ✅ 合計
+    this.items[11].name =
+      (this.items[1].name || 0) +
+      (this.items[3].name || 0) +
+      (this.items[5].name || 0) +
+      (this.items[7].name || 0) +
+      (this.items[9].name || 0);
+
   }
 
   // 📥 🇻🇳 Hàm gọi API để lấy danh sách máy | 🇯🇵 機械のリストを取得するためのAPI呼び出し関数
   fetchMachines(): void {
     // truyền vào tham số factory = 4 cho api lấy dữ liệu nhà máy tierra
     // APIにパラメータ factory = 4 を渡して、tierra工場のデータを取得する
-    this.machineService.getMachines(4).subscribe({
+    this.machineService.getMachines(4).pipe(takeUntil(this.destroy$))
+    .subscribe({
       next: (data) => {
         this.machines = data.map(element=>{
           if(element.schedule_stop_machine){
@@ -320,7 +305,7 @@ onWheel(event: WheelEvent): void {
         });
         
         // ✅ 表示色ごとにカウント
-        const colorCounts = this.countColorsFromMachines(this.machinesType40);
+        const colorCounts = countColorsFromMachines(this.machinesType40);
         // 画面左の一覧内の数値を変更
         this.items[1].name = colorCounts['#4f6fff'] || 0;
         this.items[3].name = colorCounts['#84ff00ff'] || 0;
@@ -356,42 +341,41 @@ onWheel(event: WheelEvent): void {
   }
 
   // 2025.10.30 機械の状態に応じた色を返す方向にシフト
-  getPerformanceColor(status: number): string{
-    switch (status) {
-      case 2:   return '#ccc';        // ❌ ERROR: xám - エラー
-      case 1:   return '#84ff00ff';   // ✅ RUNNING: xanh lá - 稼働中
-      case 0:   return '#ff8080';   // ⛔ STOP: đỏ - 停止
-      case 3:   return '#ff9800';     // 🔧 MAINTENANCE: cam - メンテナンス
-      case 4:   return '#2196f3';     // 💤 IDLE: xanh dương - 待機中
-      case 5:   return '#ff0000ff';   // ⚠️ WARNING: tím - 警告(4h以上停止)
-      case 6:   return '#4f6fff';     // 稼働中(目標稼働率以上)
-      default:  return '#9e9e9e';     // ❓ Không xác định - 不明
-    }
-  }
+  // getPerformanceColor(status: number): string{
+  //   switch (status) {
+  //     case 2:   return '#ccc';        // ❌ ERROR: xám - エラー
+  //     case 1:   return '#84ff00ff';   // ✅ RUNNING: xanh lá - 稼働中
+  //     case 0:   return '#ff8080';   // ⛔ STOP: đỏ - 停止
+  //     case 3:   return '#ff9800';     // 🔧 MAINTENANCE: cam - メンテナンス
+  //     case 4:   return '#2196f3';     // 💤 IDLE: xanh dương - 待機中
+  //     case 5:   return '#ff0000ff';   // ⚠️ WARNING: tím - 警告(4h以上停止)
+  //     case 6:   return '#4f6fff';     // 稼働中(目標稼働率以上)
+  //     default:  return '#9e9e9e';     // ❓ Không xác định - 不明
+  //   }
+  // }
 
-  countColors(statusList: number[]): { [color: string]:number } {
-      const colorCount:{ [color: string]: number } = {};            
-      statusList.forEach(status => {
-            const color = this.getPerformanceColor(status);
-            colorCount[color] = (colorCount[color] || 0) + 1;
-          });
-        return colorCount;
-      }
+  // countColors(statusList: number[]): { [color: string]:number } {
+  //     const colorCount:{ [color: string]: number } = {};            
+  //     statusList.forEach(status => {
+  //           const color = this.getPerformanceColor(status);
+  //           colorCount[color] = (colorCount[color] || 0) + 1;
+  //         });
+  //       return colorCount;
+  //     }
   
-  
-  countColorsFromMachines(machines: any[]): { [color: string]: number } {
-    const colorCount: { [color: string]: number } = {};
+  // countColorsFromMachines(machines: any[]): { [color: string]: number } {
+  //   const colorCount: { [color: string]: number } = {};
 
-    machines.forEach(machine => {
-      const color = machine.schedule_stop_machine
-        ? '#ccc' // Stop 表示と同じ条件で色を固定
-        : this.getPerformanceColor(machine.status); // 通常の色
+  //   machines.forEach(machine => {
+  //     const color = machine.schedule_stop_machine
+  //       ? '#ccc' // Stop 表示と同じ条件で色を固定
+  //       : this.getPerformanceColor(machine.status); // 通常の色
 
-      colorCount[color] = (colorCount[color] || 0) + 1;
-    });
+  //     colorCount[color] = (colorCount[color] || 0) + 1;
+  //   });
 
-    return colorCount;
-  }
+  //   return colorCount;
+  // }
 
   // 📌 Hàm xử lý khi click vào SVG trong chế độ Edit mode, trả về tọa độ tại điểm click
   // 📌 編集モードでSVGをクリックしたときの処理関数。クリック地点の座標を返す
@@ -450,6 +434,7 @@ onWheel(event: WheelEvent): void {
       this.isPanning = false;
     }
   }
+  
   inputDowntime(machine: Machine){
       //open dialog to input information of Schedule Stop Machine. This dialog is used to save schedule stop machine and set machine to Run status
       this.ref_dialog = this.dialogService.open(StatusMachineDialogComponent, {
@@ -497,47 +482,7 @@ onWheel(event: WheelEvent): void {
       )
   }
 
-  // 生産勝ち負け関連
-    displayResult(){
-        // 使用する変数を取得
-        const today = getTodayInJST();                          // 当日(string型)
-        const firstday = getFirstDayOfCurrentMonthInJST();      // 今月1日(string型)
-        const daynumber = new Date().getDate();                 // 今日の日にち(number型)
-        const daycount = getWeekdaysThisMonthUntilYesterday();  // 今月の今日までの平日数
-  
-        // 累積の生産計画数と良品数の格納先を宣言
-        let PlanTotal = 0;
-        let ProgTotal = 0;
-        let PlanTotalPerday = 0;
-            this.kpiService.getMachiningTotal_factory(4,firstday,today).subscribe({
-                next: (res: MachiningTotalsResponse) => {
-                    PlanTotalPerday = Number(res.MachiningPlan_factory);
-                    PlanTotal = PlanTotalPerday * daycount;
-                    ProgTotal = Number(res.MachiningProg_factory);
-                    if(PlanTotal>ProgTotal){
-                        this.judge = '✖';
-                        this.delta = PlanTotal-ProgTotal;
-                        
-                    }
-                    else{
-                        this.judge = '〇';
-                        this.delta = ProgTotal - PlanTotal;
-                    }
-                    
-                },
-                
-                error: (err) => {
-                        console.error('getMachiningTotal_factory error:', err);
-                        // エラー時のフォールバック
-                        PlanTotal = 0;
-                        ProgTotal = 0;
-                }
-  
-            });
-  
-    }
-
-  // 生産勝ち負け表示(テスト)
+  // 生産勝ち負け表示
     displayProgResult(){
       const date = getFirstDayOfCurrentMonthInJST();      // 今月1日をstring型で生成
       const parts = 'all';
@@ -546,14 +491,16 @@ onWheel(event: WheelEvent): void {
       let daycount = 0;       // 稼働日数(生産進捗表示に使用)
       let PlanTotal = 0;
       let ProgTotal = 0;
-      let PlanTotalPerday = 0;
+      
       // 工場指定(Tierra:4)
-      this.kpiService.getMachiningKPI(4, parts, machine, date).subscribe({
+      this.kpiService.getMachiningKPI(4, parts, machine, date).pipe(takeUntil(this.destroy$))
+      .subscribe({
         next: (res: MachiningResponse) => {
             // --- アクセス方法 ---
             this.machiningplans = Array.isArray(res.MachiningPlan) ? res.MachiningPlan : [];
             this.machiningprogs = Array.isArray(res.MachiningProg) ? res.MachiningProg : [];
             
+            const orderByMonth = this.machiningplans[0].total;    //月の切削指示数
             const planPerline = Math.ceil(this.machiningplans[0].target_prod);
             let planByDay: number[] = new Array(31).fill(0);      //日ごと生産計画数
             // 生産実績
@@ -564,13 +511,16 @@ onWheel(event: WheelEvent): void {
                 planByDay[day-1] = planPerline;     // 生産指示数
                 // 切削稼働日を格納
                 daycount = daycount+1;
-                //テスト
+                // 生産計画と生産実績の累積を格納
                 PlanTotal = Number(PlanTotal+planPerline);
                 ProgTotal = Number(ProgTotal)+Number(this.machiningprogs[n].good_prod);
-                // console.log(ProgTotal);
+                
             }
             
-            // 工場全体の生産進捗勝ち負け表示
+          // 工場全体の生産進捗勝ち負け表示
+          if(orderByMonth < PlanTotal){
+            PlanTotal = orderByMonth;
+          }
           if(PlanTotal>ProgTotal){
             this.judge = '✖';
             this.delta = Math.floor(PlanTotal-ProgTotal);

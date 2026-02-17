@@ -19,7 +19,7 @@ export class RoleController {
     // Create a new role and list of permissions
     @Post()
     @HasPermission(4)
-    @UseGuards(AuthGuard)
+    //@UseGuards(AuthGuard)
     async create(@Body() dto: CreateRoleDto, @Req() request: Request) {
         return this.roleService.createRole(dto, request);
     }
@@ -41,7 +41,7 @@ export class RoleController {
     // Update a role by id
     @Put(':id')
     @HasPermission(4)
-    @UseGuards(AuthGuard)
+    //@UseGuards(AuthGuard)
     async update(
         @Param('id') id: string,
         @Body() dto: UpdateRoleDto,
@@ -53,7 +53,7 @@ export class RoleController {
     // Delete a role by id
     @Delete(':id')
     @HasPermission(4)
-    @UseGuards(AuthGuard)
+    //@UseGuards(AuthGuard)
     async remove(@Param('id') id: string, @Req() request: Request) {
         return this.roleService.deleteRole(+id, request);
     }

@@ -3,7 +3,7 @@ import { Controller, Get, UseGuards } from '@nestjs/common';
 import { PermissionService } from './permission.service';
 import { HasPermission } from './has-permission.decorator';
 
-@UseGuards(AuthGuard)
+//@UseGuards(AuthGuard)
 @Controller('permissions')
 export class PermissionController {
     constructor(private permissionService : PermissionService){

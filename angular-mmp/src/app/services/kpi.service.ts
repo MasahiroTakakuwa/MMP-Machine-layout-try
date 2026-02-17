@@ -30,6 +30,14 @@ export class KpiService {
     );
   }
 
+  // 対象の工場で生産している品番・品名を取得(切削工程のみ)
+  getPartslist(factory: number =0): Observable<any>{
+    const url = `${this.apiURL}/kpi/parts?factory=${factory}`;
+    return this.http.get<any>(url).pipe(
+        map((res) => res as any)    
+    );
+  }
+
   // 現行未使用
   getProductHistory(factory: number =0,parts_no: string='',date: string=''): Observable<any>{
     const url = `${this.apiURL}/kpi/product?factory=${factory}&parts_no=${parts_no}&date=${date}`;
