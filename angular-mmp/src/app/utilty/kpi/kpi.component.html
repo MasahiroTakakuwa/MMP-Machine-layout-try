@@ -45,12 +45,18 @@
                     <div class="font-semibold text-2xl">設備</div>
                     <p-dropdown [(ngModel)]="machinelistValue" [options]="machinelistValues" optionLabel="name" placeholder="Select"/>
                 </div>
+                <div class="flex align-items-center gap-2">
+                    <div class="font-semibold text-2xl">計画更新:{{updated_plan | date:'yyyy/MM/dd'}}</div>
+                </div>
+                <div class="flex align-items-center gap-2">
+                    <div class="font-semibold text-2xl">最新生産:{{updated_prod | date:'yyyy/MM/dd'}}</div>
+                </div>
                 <!-- 判定（〇=青 / ✖=赤） -->
                 <!-- 差分（判定と同じ色） -->
                 <div class="flex align-items-center gap-20">
                     <p-button label="更新" (onClick)="displayCharts()"></p-button>
                     
-                    <div class="font-semibold text-4xl judge"
+                    <!-- <div class="font-semibold text-4xl judge"
                         [class.ok]="judge === '〇'"
                         [class.ng]="judge === '✖'">
                         生産進捗：{{ judge || '-' }}
@@ -60,7 +66,7 @@
                         [class.ok]="judge === '〇'"
                         [class.ng]="judge === '✖'">
                         計画比：{{ (delta != null ? (delta | number:'1.0-0') : '-') }}
-                    </div>
+                    </div> -->
                     
                 </div>
            </div>

@@ -1,0 +1,13 @@
+
+.checkbox-row {
+  display: flex;
+  align-items: center;   /* ← これで縦方向の中央揃え */
+//   min-height: 40px;       /* 行高さがある場合に安定 */
+}
+
+.cb-scale .p-checkbox {
+  transform: scale(2.0);     /* 1.0 = 等倍。大きくしたい値に変更 */
+//   transform-origin: left center;
+//   margin-top: 20px;          /* 必要に応じて調整 */
+
+}

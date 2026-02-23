@@ -1,10 +1,11 @@
-import { Component, OnInit, OnDestroy,viewChild, ViewChild } from "@angular/core";
+import { Component, OnInit, OnDestroy,ViewChild } from "@angular/core";
 import { ActivatedRoute } from "@angular/router";
 import { CommonModule } from "@angular/common";
 import { FormsModule } from "@angular/forms";
 
 import { ButtonModule } from "primeng/button";
 import { ChartModule, UIChart } from "primeng/chart";
+import { CheckboxModule } from "primeng/checkbox";
 import { DropdownModule } from "primeng/dropdown";
 import { FluidModule } from "primeng/fluid";
 import { ToastModule } from "primeng/toast";
@@ -12,40 +13,51 @@ import { ToggleButtonModule } from "primeng/togglebutton";
 import { MessageService } from "primeng/api";
 import { MessageModule } from "primeng/message";
 
-import { debounceTime, Subscription } from 'rxjs';
+import { debounceTime, Subject, Subscription, startWith, switchMap, takeUntil, timer, map, of, filter, BehaviorSubject } from 'rxjs';
 
 import { LayoutService } from "../../layout/service/layout.service";
+import { SchedulerService } from "../../services/scheduler.service";
 
-import { FactoryOption,Dropdownitem,Dropdownitem2,Kpi,PartsList } from "../../interface/ui";
+import { FactoryOption,Dropdownitem,LineListGroup,ChartDataGroup } from "../../interface/ui";
+import { IFooter, IMachinelist, IToolprogerss } from "../../interface/scheduler";
 
 @Component({
     selector: 'app-utility-scheduler',
     standalone:true,
-    imports:[ButtonModule,CommonModule,ChartModule,DropdownModule,FormsModule,FluidModule,MessageModule,
+    imports:[ButtonModule,CommonModule,ChartModule,CheckboxModule,DropdownModule,FormsModule,FluidModule,MessageModule,
              ToastModule,ToggleButtonModule],
     templateUrl: './scheduler.component.html',
-    // styleUrl: './kpi.component.scss',
+    styleUrl: './scheduler.component.scss',
     providers:[MessageService],
 })
 
-export class UtilitySchedulerComponent {
+export class UtilitySchedulerComponent implements OnInit, OnDestroy {
 
-    @ViewChild('prodChart') prodChart?:UIChart;
+    // @ViewChild('prodChart') prodChart?:UIChart;
+    private destroy$ = new Subject<void>();
+    
+    checked = false;
+    private checked$ = new BehaviorSubject<boolean>(false);
+    view = { tick: 0, lastUpdated: new Date() };
 
     factory = '';
     subscription: Subscription;
     constructor(
         private route: ActivatedRoute,
         private layoutService: LayoutService,
+        private schedulerService: SchedulerService,
         private messageService: MessageService
         ) {
         // ページのルートパラメータが変わるたびに更新する様に設定。
         this.route.paramMap.subscribe(params => {
         this.factory = params.get('factory') ?? '';
         });
-        this.subscription = this.layoutService.configUpdate$.pipe(debounceTime(25)).subscribe(() => {
+        this.subscription = this.layoutService.configUpdate$.pipe(debounceTime(25),takeUntil(this.destroy$)
+        ).subscribe(() => {
             
         });
+        this.setupAutoRefresh();
+
     }
 
         // ルーターパラメータ(工場名)と工場区分の紐づけ
@@ -61,26 +73,28 @@ export class UtilitySchedulerComponent {
         // 品番
         partslistValues:  Dropdownitem[] = [];
         partslistValue: Dropdownitem | null = null;
-        // ラインNo・設備名
-        machinelistValues: Dropdownitem2[] = [];
-        machinelistValue: Dropdownitem2 | null = null;
+        // ラインNo・設備選択(3台分準備)
+        lineGroups: LineListGroup[] =[
+            {values:[],value:null},
+            {values:[],value:null},
+            {values:[],value:null},
+        ];
+        // 刃具交換本数積み上げ棒グラフ用チャートデータ
+        ToolChangeData: any;
+        ToolchangeOptions: any;
+        ToolChartGroups: ChartDataGroup[] =[
+            {Data: null,Options: null},
+            {Data: null,Options: null},
+            {Data: null,Options: null},
+        ];
+        ToolChartTitles: string[] =["設備1","設備2","設備3"];
 
-        // 生産実績
-        ProdChartData: any;
-        ProdChartOptions: any;
-        // 可動率
-        OperatingRateData: any;
-        OperatingRateOptions: any;
-        // 不良率
-        DefectRateData: any;
-        DefectRateOptions: any;
-
-        // ブラウザ立上げ時
+    // ブラウザ立上げ時
     ngOnInit(){
         this.route.paramMap.subscribe(params => {
             const name = params.get('factory');
             this.factoryNo = this.factoryCode.find(x => x.name === name)?.code ?? 0;
-            // this.loadDropdownItems(this.factoryNo);
+            this.loadDropdownItems(this.factoryNo);
             // this.updateToggleState(this.factoryNo);
             this.initCharts();
             
@@ -94,12 +108,60 @@ export class UtilitySchedulerComponent {
     }
 
     // ブラウザ終了時
-    ngOnDestroy(){
-        if (this.subscription) {
-            this.subscription.unsubscribe();
-        }
+    ngOnDestroy(): void {
+        this.destroy$.next();
+        this.destroy$.complete();
 
     }
+
+    // UI表示関連
+    // 工場内のライン一覧リスト読み込み
+    loadDropdownItems(factoryCode: number) {
+        this.schedulerService.getLineNoSummary(factoryCode).subscribe((items: IMachinelist[]) =>
+        {
+            const dynamicItems = items.map(item => ({
+                name: item.parts_name+String(item.line_no)+"ライン",
+                code: item.header_machine
+            }));
+            // lineGroups内にそれぞれ格納(同一データ)
+            this.lineGroups[0].values = [...dynamicItems];
+            this.lineGroups[1].values = [...dynamicItems];
+            this.lineGroups[2].values = [...dynamicItems];
+
+        });
+
+        // 先頭のインデックスを固定項目に設定
+        this.lineGroups[0].value = null;
+        this.lineGroups[1].value = null;
+        this.lineGroups[2].value = null;
+        
+    }
+
+    // チェックボックスのON/OFF監視
+    onToggle(isOn: boolean){
+        this.checked$.next(isOn);
+    }
+
+    private setupAutoRefresh() {
+        this.checked$
+        .pipe(
+            // ON のときだけ interval を流し、OFF で即停止
+            switchMap((isOn) => (isOn ? timer(0,60000).pipe(startWith(0)) : of(null))),
+            filter((v) => v !== null), // OFF 時のダミー値を除外
+            // 実際には API 呼び出しなどに置き換え：
+            // switchMap(() => this.api.fetchChartData()),
+            map(() => ({ tick: this.view.tick + 1, lastUpdated: new Date() })),
+            takeUntil(this.destroy$) // 破棄時に自動解除
+        )
+        .subscribe((nextView) => {
+            // 最終更新日時を書き換え
+            this.view = nextView;
+            // グラフ再描画
+            this.displayCharts();
+        });
+        
+    }
+
 
     // グラフエリア初期設定
     initCharts() {
@@ -108,334 +170,312 @@ export class UtilitySchedulerComponent {
         const textColorSecondary = documentStyle.getPropertyValue('--text-color-secondary');
         const surfaceBorder = documentStyle.getPropertyValue('--surface-border');
         
-        // 生産実績
-        this.ProdChartData = {
-            // labels: this.labels_day,
+        // 刃具交換本数
+        this.ToolChangeData = {
+            labels: [1,2,3,4,5],
             datasets: [
                 {
-                    type: 'bar',
-                    label: '計画',
-                    backgroundColor: '#b0b0b0ff',
-                    borderColor: '#b0b0b0ff',
-                    data: [6000, 6000, 6000, 6000, 6000, 0, 0],
-                    yAxisID: 'y-axis-1'
+                type: 'bar',
+                label: 'T1',
+                backgroundColor: '#ff0000ff',
+                data: [0, 1, 0, 1, 1],
+                yAxisID: 'y-axis-1'
                 },
                 {
-                    type: 'bar',
-                    label: '実績',
-                    backgroundColor: '#0022ffff',
-                    borderColor: '#0022ffff',
-                    data: [6100, 5800, 5500, 6200, 6000, 0, 0],
-                    yAxisID: 'y-axis-1'
-                }
-                
-            ]
-        };
-
-        this.ProdChartOptions = {
-            maintainAspectRatio: false,
-            aspectRatio: 1.0,
-            responsive: true,
-            plugins: {
-                legend: {
-                    position: 'right',
-                    labels: {
-                        color: textColor,
-                        font: {
-                            size:20
-                        }
-                    }
-                }
-            },
-            scales: {
-                x: {
-                    title:{
-                        display:true,
-                        text: '[日]',
-                        font: {size:18},
-                        padding: {top:8,bottom: 0}
-                    },
-                    ticks: {
-                        color: textColorSecondary,
-                        font: {
-                            weight: 500,
-                            size: 20
-                        }
-                    },
-                    grid: {
-                        display: false,
-                        drawBorder: false
-                    }
-                },
-                // Y軸の設定
-                'y-axis-1': {
-                    type: 'linear',
-                    position: 'left',
-                    title:{
-                        display:false,
-                        text: '[個]',
-                        font: {size:18},
-                        padding: {top:0,bottom: 8}
-                    },
-                    ticks: {
-                        // callback: (value: number | string) => formatK(Number(value)),
-                        color: textColorSecondary,
-                        beginAtZero: true,
-                        font:{
-                            size: 20
-                        }
-                        
-                    },
-                    grid: {
-                        color: surfaceBorder,
-                        drawBorder: false
-                    }
-                },
-                
-            }
-        };
-
-        // 可動率
-        this.OperatingRateData = {
-            // labels: this.labels_day,
-            datasets: [
-                {
-                    type: 'bar',
-                    label: '目標',
-                    backgroundColor: '#b0b0b0ff',
-                    borderColor: '#b0b0b0ff',
-                    data: [60, 60, 60, 60, 60, 0, 0],
-                    yAxisID: 'y-axis-1'
-                },
-                {
-                    type: 'bar',
-                    label: '実績',
-                    backgroundColor: '#0022ffff',
-                    borderColor: '#0022ffff',
-                    data: [102, 97, 91, 103, 10],
-                    yAxisID: 'y-axis-1'
+                type: 'bar',
+                label: 'T2',
+                backgroundColor: '#66BB6A',
+                data: [1, 1, 0, 0, 1],
+                yAxisID: 'y-axis-1'
                 },
                 
             ]
 
         };
 
-        this.OperatingRateOptions = {
-            maintainAspectRatio: false,
-            aspectRatio: 1.0,
-            responsive: true,
-            plugins: {
-                legend: {
-                    position: 'right',
-                    labels: {
-                        color: textColor,
+        // 各グラフエリアを設定
+        for(let i = 0;i < this.ToolChartGroups.length;i++){
+            this.ToolChartGroups[i].Data = {
+            labels: [15,30,45,60,75,90,105,120,135,150,165,180,195,210,225,240,255,270,285,300,315,330,345,360],
+            datasets: [
+                {
+                type: 'bar',
+                label: 'T1',
+                backgroundColor: '#ff0000ff',
+                data: [1, 1, 1, 1, 1],
+                yAxisID: 'y-axis-1'
+                },
+                {
+                type: 'bar',
+                label: 'T2',
+                backgroundColor: '#81bb66',
+                data: [1, 1, 1, 1, 0],
+                yAxisID: 'y-axis-1'
+                },
+                {
+                type: 'bar',
+                label: 'T3',
+                backgroundColor: '#ffbb00',
+                data: [1, 1, 1, 0, 0],
+                yAxisID: 'y-axis-1'
+                },
+                {
+                type: 'bar',
+                label: 'T4',
+                backgroundColor: '#0011fd',
+                data: [1, 1, 0, 0, 0],
+                yAxisID: 'y-axis-1'
+                },
+                {
+                type: 'bar',
+                label: 'T5',
+                backgroundColor: '#a200ff',
+                data: [1, 0, 0, 0, 0],
+                yAxisID: 'y-axis-1'
+                },
+                
+            ]
+            };
+            this.ToolChartGroups[i].Options = {
+                maintainAspectRatio: false,
+                aspectRatio: 1.0,
+                responsive: true,
+                plugins: {
+                    title: {
+                        display: true,
+                        position: 'top',
+                        align: 'start',
+                        text: this.ToolChartTitles[i],
                         font: {
                             size:20
                         }
-                    }
-                }
-            },
-            scales: {
-                x: {
-                    title:{
-                        display:true,
-                        text: '[日]',
-                        font: {size:18},
-                        padding: {top:8,bottom: 0}
                     },
-                    ticks: {
-                        color: textColorSecondary,
-                        font: {
-                            weight: 500,
-                            size: 20
+                    legend: {
+                        position: 'right',
+                        labels: {
+                            color: textColor,
+                            font: {
+                                size:20
+                            }
                         }
-                    },
-                    grid: {
-                        display: false,
-                        drawBorder: false
                     }
                 },
-                // Y軸の設定
-                'y-axis-1': {
-                    type: 'linear',
-                    position: 'left',
-                    title:{
-                        display:false,
-                        text: '[％]',
-                        font: {size:18},
-                        padding: {top:0,bottom: 8}
+                scales: {
+                    x: {
+                        stacked: true,
+                        title:{
+                            display:true,
+                            text: '[分後]',
+                            font: {size:18},
+                            padding: {top:8,bottom: 0}
+                        },
+                        ticks: {
+                            font: {
+                                weight: 500,
+                                size: 20
+                            }
+                        },
                     },
-                    ticks: {
-                        color: textColorSecondary,
-                        beginAtZero: true,
-                        font: {
-                            size:20
+                    // Y軸の設定
+                    'y-axis-1': {
+                        type: 'linear',
+                        position: 'left',
+                        stacked: true,
+                        title:{
+                            display:true,
+                            text: '[本]',
+                            font: {size:18},
+                            padding: {top:0,bottom: 8}
+                        },
+                        ticks: {
+                            color: textColorSecondary,
+                            beginAtZero: false,
+                            precision: 0,
+                            font: {
+                                size:20
+                            },
+                            max: 20
+                        },
+                        grid: {
+                            color: surfaceBorder,
+                            drawBorder: false
                         }
+
                     },
-                    grid: {
-                        color: surfaceBorder,
-                        drawBorder: false
-                    }
-                }                
-            }
+                    
+                }
+            };
         }
 
-        // 不良率
-        this.DefectRateOptions = {
-            maintainAspectRatio: false,
-            aspectRatio: 1.0,
-            responsive: true,
-            plugins: {
-                legend: {
-                    position: 'right',
-                    labels: {
-                        color: textColor,
-                        font: {
-                            size:20
-                        }
-                    }
-                }
-            },
-            scales: {
-                x: {
-                    stacked: true,
-                    title:{
-                        display:true,
-                        text: '[日]',
-                        font: {size:18},
-                        padding: {top:8,bottom: 0}
-                    },
-                    ticks: {
-                        font: {
-                            weight: 500,
-                            size: 20
-                        }
-                    },
-                },
-                // Y軸の設定
-                'y-axis-1': {
-                    type: 'linear',
-                    position: 'left',
-                    stacked: true,
-                    title:{
-                        display:false,
-                        text: '[％]',
-                        font: {size:18},
-                        padding: {top:0,bottom: 8}
-                    },
-                    ticks: {
-                        color: textColorSecondary,
-                        beginAtZero: false,
-                        font: {
-                            size:20
-                        },
-                        max: 2.0
-                    },
-                    grid: {
-                        color: surfaceBorder,
-                        drawBorder: false
-                    }
-                },
-                
-            }
+        // this.ToolchangeOptions = {
+        //     maintainAspectRatio: false,
+        //     aspectRatio: 1.0,
+        //     responsive: true,
+        //     plugins: {
+        //         legend: {
+        //             position: 'right',
+        //             labels: {
+        //                 color: textColor,
+        //                 font: {
+        //                     size:20
+        //                 }
+        //             }
+        //         }
+        //     },
+        //     scales: {
+        //         x: {
+        //             stacked: true,
+        //             title:{
+        //                 display:true,
+        //                 text: '[分後]',
+        //                 font: {size:18},
+        //                 padding: {top:8,bottom: 0}
+        //             },
+        //             ticks: {
+        //                 font: {
+        //                     weight: 500,
+        //                     size: 20
+        //                 }
+        //             },
+        //         },
+        //         // Y軸の設定
+        //         'y-axis-1': {
+        //             type: 'linear',
+        //             position: 'left',
+        //             stacked: true,
+        //             title:{
+        //                 display:false,
+        //                 text: '[本]',
+        //                 font: {size:18},
+        //                 padding: {top:0,bottom: 8}
+        //             },
+        //             ticks: {
+        //                 color: textColorSecondary,
+        //                 beginAtZero: false,
+        //                 precision: 0,
+        //                 font: {
+        //                     size:20
+        //                 },
+        //                 max: 20
+        //             },
+        //             grid: {
+        //                 color: surfaceBorder,
+        //                 drawBorder: false
+        //             }
 
-        };
+        //         },
+                
+        //     }
+
+        // };
 
     }
 
-    // UI表示関連
-    // 品番リスト読み込み
-    // loadDropdownItems(factoryCode: number) {
-    //     // 固定項目として全品番を宣言
-    //     const fixedItem = {name: '全品番', code: 'all'}
-    //     const type = this.toggleValue ? 1 : 0;              // 加工方法 1:切削　0:鍛造
-    //     // 加工方法で分岐
-    //     if(type == 1){
-    //         // this.kpiService.getPartsNo_type(factoryCode,type).subscribe((items: Kpi[]) =>
-    //         // {
-    //         //     const dynamicItems = items.map(item => ({
-    //         //         name: item.parts_no,
-    //         //         code: item.parts_no
-    //         //     }));
-    //         //     this.partslistValues = [fixedItem, ...dynamicItems];
-                                
-    //         // });
-    //         this.kpiService.getPartslist(factoryCode).subscribe((items: PartsList[]) =>
-    //         {
-    //             const dynamicItems = items.map(item => ({
-    //                 name: item.parts_name,
-    //                 code: item.parts_no
-    //             }));
-    //             this.partslistValues = [fixedItem, ...dynamicItems];
-                                
-    //         });
-
-    //     }
-    //     else if(type == 0){
-    //         this.partslistValues = [fixedItem];
-
-    //     }
-    //     // 先頭のインデックスを固定項目に設定
-    //     this.partslistValue = null;
+    // グラフタイトル   再代入
+    setTitle(idx: number, newTitle: string) {
+        this.ToolChartTitles[idx] = newTitle;
+        this.ToolChartGroups[idx].Options = {
+        ...this.ToolChartGroups[idx].Options,
+        plugins: {
+            ...this.ToolChartGroups[idx].Options.plugins,
+            title: {
+            ...this.ToolChartGroups[idx].Options.plugins.title,
+            text: newTitle
+            }
+        }
+        };
         
-    // }
+    }
 
-    // 設備リスト読み込み
-    // loadDropdownItems2(factoryCode: number, partsCode: string) {
-    //     // ここでは 0/1 に統一（例：1=切削, 0=鍛造）
-    //     const type = this.toggleValue ? 1 : 0;
-    //     type OptionItem = {name:string;code:string};
-    //     // 呼び出し前ガード
-    //     if (!this.partslistValue || this.partslistValue.code === undefined) {
-    //         // 必要なら初期化やログ
-    //         return;
-    //     }
-    //     // 'all' かつ切削の場合は固定項目のみ
-    //     if (this.partslistValue.code === 'all' && type == 1) {
-    //         // 固定項目として全ラインを宣言
-    //         const fixedItem = { name: '全ライン', code: 'all' };
-    //         this.machinelistValues = [fixedItem];
-    //         this.machinelistValue = this.machinelistValues[0]; // ここで確実にセット
-    //         return;
-    //     }
-    //     // それ以外の場合はAPI 呼び出し（items が null の場合に備えて正規化）
-    //     else{
-    //         // 固定項目として全設備を宣言
-    //         const fixedItem = { name: '全設備', code: 'all' };
-    //         this.kpiService.getLineNo_type(factoryCode, partsCode, type).subscribe({
-    //         next: (items: any[]) => {
-    //         const list = Array.isArray(items) ? items : [];
-    //         let dynamicItems: OptionItem[] = [];
-    //         if (type === 0) {
-    //             // 鍛造なら machine_name
-    //             dynamicItems = list.map(item => ({
-    //             name: item?.machine_name ?? '',
-    //             code: item?.machine_name ?? ''
-    //             }));
-    //         } else if (type === 1) {
-    //             // 切削なら line_no
-    //             dynamicItems = list.map(item => ({
-    //             name: item?.line_no ?? '',
-    //             code: item?.line_no ?? ''
-    //             }));
-    //         } else {
-    //             // 予期しない type のフォールバック
-    //             dynamicItems = [];
-    //         }
-    //         // 固定 + 動的
-    //         this.machinelistValues = [fixedItem, ...dynamicItems];
-    //         // 先頭をデフォルト選択（配列が空でも fixedItem が入るため安全）
-    //         this.machinelistValue = this.machinelistValues[0];
-    //         },
-    //         error: (err) => {
-    //         console.error('getLineNo_type error:', err);
-    //         // エラー時も安全に初期化
-    //         this.machinelistValues = [fixedItem];
-    //         this.machinelistValue = this.machinelistValues[0];
-    //         }
-    //     });
-    //     }
-    
-    // }
+    // グラフ描画
+    displayCharts(){
+        // UIに入力されているデータを格納
+        const factory = this.factoryNo | 0;
+        let header = 0;
+        // グラフデータ用の定数を宣言
+        // 目盛数に合わせて変更(0～360分を15分刻み)
+        const BUCKETS = 25;
+        const tools = Array.from({ length: 5 }, (_, i) => `T${i + 1}`);
+        // Max3台分グラフデータを生成
+        for (let i = 0; i < this.lineGroups.length; i++){
+            // ドロップダウンリストが選択されているか確認
+            header = this.lineGroups[i].value?.code ?? 0;
+            // 未選択の場合はループから抜け出し、処理終了
+            if(header === 0){
+                break;
+            }
+            // 該当ラインの末端設備の機器番号を取得
+            else{
+                // グラフエリアのタイトルにドロップダウンリストのnameを反映
+                const newtitle = this.lineGroups[i].value?.name ?? "None";
+                this.setTitle(i,newtitle);
+                // 引数として使用するため、ここで値を固定
+                const headerValue = header;
+                this.schedulerService.getFooterMachine(factory,headerValue).pipe(
+                    switchMap((item: IFooter) =>
+                        this.schedulerService.getMinutesLeft(factory,headerValue,item.footer_machine)
+                    ),
+                    map((items: IToolprogerss[]) => {
+                        // ① Tool と minutes の列だけ抜き出し（型/値を正規化）
+                        const rows = items
+                        .map(x => ({
+                            // ← ここをあなたの実データのキーに合わせて調整
+                            tool: (x as any).tool_no ?? (x as any).tool,
+                            minutes: Number((x as any).minutes_left)
+                        }))
+                        .filter(x =>
+                            typeof x.tool === 'string' &&
+                            Number.isFinite(x.minutes) &&
+                            x.minutes >= 0
+                        );
+                        
+                        const zeroBuckets = () => Array.from({ length: BUCKETS }, () => 0);
+                        const toBucket = (m: number) => Math.min(Math.floor(m / 15), BUCKETS - 1);
+                        const histByTool = new Map<string, number[]>();
+
+                        for (const t of tools) {
+                        // そのツールの minutes 配列を取り出す
+                        const mins = rows
+                            .filter(r => r.tool === t)
+                            .map(r => r.minutes);
+
+                        // データが無ければ 0 埋めで固定長をセット
+                        if (mins.length === 0) {
+                            histByTool.set(t, zeroBuckets());
+                            continue;
+                        }
+
+                        // データがある場合も固定長で初期化してからカウント
+                        const buckets = zeroBuckets();
+                        for (const m of mins) {
+                            if (m < 0 || m > 360 || !Number.isFinite(m)) continue; // 念のため防御
+                            const idx = toBucket(m);
+                            buckets[idx] += 1;
+                        }
+                        histByTool.set(t, buckets);
+                        }
+
+                        return histByTool;
+                    }),
+                    // 最後に購読破棄
+                    takeUntil(this.destroy$)
+                ).subscribe({
+                next: (histByTool) => {
+                    tools.forEach((t, idx) => {
+                        const arr = histByTool.get(t) ?? Array(BUCKETS).fill(0);
+                        this.ToolChartGroups[i].Data.datasets[idx].data = arr;
+                    
+                    });
+                    this.ToolChartGroups[i].Data = {...this.ToolChartGroups[i].Data};
+
+                },
+                error: (err) => console.error('集計エラー', err)
+                });
+
+            }
+            
+        }
+
+    }
 
 }

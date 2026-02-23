@@ -12,14 +12,15 @@ import { ToggleButtonModule } from "primeng/togglebutton";
 import { MessageService } from "primeng/api";
 import { MessageModule } from "primeng/message";
 
-import { debounceTime, Subscription } from 'rxjs';
+import { debounceTime, Subscription, Subject, takeUntil } from 'rxjs';
 
 import { LayoutService } from "../../layout/service/layout.service";
 import { KpiService } from "../../services/kpi.service";
 
 import { getFirstDayOfCurrentMonthInJST, getWeekendDaysOfCurrentMonth } from "../../shared/utils";
+import { averageNonZero1D, addArrays, addManyArrays } from "../../shared/utils";
 
-import { FactoryOption,Dropdownitem,Dropdownitem2,Kpi,PartsList } from "../../interface/ui";
+import { FactoryOption,Dropdownitem,Dropdownitem2,Kpi,PartsList,LastUpdatedPlan, LastUpdatedProd } from "../../interface/ui";
 import { ForgingPlanItem,ForgingProgItem,ForgingResponse } from "../../interface/forging";
 import { MachiningPlanItem,MachiningProgItem,MachiningBaseCTItem,MachiningResponse } from "../../interface/machining";
 
@@ -114,9 +115,11 @@ function formatK(n: number): string {
     providers:[MessageService],
 })
 
-export class UtilityKpiComponent {
+export class UtilityKpiComponent implements OnInit,OnDestroy{
 
     @ViewChild('prodChart') prodChart?:UIChart;
+
+    private destroy$ = new Subject<void>();
 
     factory = '';
     subscription: Subscription;
@@ -161,12 +164,13 @@ export class UtilityKpiComponent {
     machiningplans: MachiningPlanItem[] = [];
     machiningprogs: MachiningProgItem[] = [];
     machiningbaseCTs: MachiningBaseCTItem[] = [];
-    // filterplan: MPlanItem[] = []; 
-    // filterprod: MProdCountItem[] = [];
     weekendDays: number[] = [];     // 休日の日付を格納用
     // 生産勝ち負け表示
     judge: string = '〇';       // 生産進捗
     delta: number = 0;          // 差分
+    // アップデート日時
+    updated_plan: Date = new Date;
+    updated_prod: Date = new Date;
 
     // Chartの初期設定
     // Chartの横軸ラベル
@@ -181,9 +185,12 @@ export class UtilityKpiComponent {
     // 可動率
     OperatingRateData: any;
     OperatingRateOptions: any;
+    OperatingAve: number | null=null;
     // 不良率
     DefectRateData: any;
     DefectRateOptions: any;
+    DefectSum: number[] = [];
+    DefectAve: number | null=null;
 
     // ブラウザ立上げ時
     ngOnInit(){
@@ -193,6 +200,7 @@ export class UtilityKpiComponent {
             this.loadDropdownItems(this.factoryNo);
             this.updateToggleState(this.factoryNo);
             this.initCharts();
+            this.loadLastupdated();
             
         });
         
@@ -205,10 +213,8 @@ export class UtilityKpiComponent {
 
     // ブラウザ終了時
     ngOnDestroy(){
-        if (this.subscription) {
-            this.subscription.unsubscribe();
-        }
-
+        this.destroy$.next();
+        this.destroy$.complete();
     }
 
     // UI表示関連
@@ -219,15 +225,6 @@ export class UtilityKpiComponent {
         const type = this.toggleValue ? 1 : 0;              // 加工方法 1:切削　0:鍛造
         // 加工方法で分岐
         if(type == 1){
-            // this.kpiService.getPartsNo_type(factoryCode,type).subscribe((items: Kpi[]) =>
-            // {
-            //     const dynamicItems = items.map(item => ({
-            //         name: item.parts_no,
-            //         code: item.parts_no
-            //     }));
-            //     this.partslistValues = [fixedItem, ...dynamicItems];
-                                
-            // });
             this.kpiService.getPartslist(factoryCode).subscribe((items: PartsList[]) =>
             {
                 const dynamicItems = items.map(item => ({
@@ -334,6 +331,21 @@ export class UtilityKpiComponent {
     // ユーザーがトグルを押した時のハンドラ（必要なら）
     onToggleChange(): void {
         this.loadDropdownItems(this.factoryNo);
+        this.loadLastupdated();
+    }
+
+    loadLastupdated(){
+        const type = this.toggleValue ? 1 : 0;              // 加工方法 1:切削　0:鍛造
+        this.kpiService.getDatePlan(type).pipe(takeUntil(this.destroy$))
+            .subscribe((item: LastUpdatedPlan) =>{
+                this.updated_plan = item.updated_at;
+                
+        });
+        this.kpiService.getDateProd(this.factoryNo,type).pipe(takeUntil(this.destroy$))
+            .subscribe((item: LastUpdatedProd) =>{
+                this.updated_prod = item.prod_date;
+
+        });
     }
 
     // グラフエリア初期設定
@@ -674,6 +686,7 @@ export class UtilityKpiComponent {
         let daycount = 0;       // 稼働日数(生産進捗表示に使用)
         let PlanTotal = 0;      // 累積計画
         let ProgTotal = 0;      // 累積良品
+
         // グラフ用データの格納先(1日から31日で固定)
         const progByDay: number[] = new Array(31).fill(0);      //生産実績
         const progPerplan: number[] = new Array(31).fill(0);    //可動率
@@ -753,6 +766,14 @@ export class UtilityKpiComponent {
 
                 // 工場全体の生産進捗勝ち負け表示
                 this.displayProdResult(PlanTotal,ProgTotal);
+                
+                // 稼働率・不良率の平均値を計算(0は除外)
+                this.OperatingAve = averageNonZero1D(progPerplan);
+                this.DefectSum = addManyArrays(inlinedefByDay,wastedefByDay,setupdefByDay);
+                this.DefectAve = averageNonZero1D(this.DefectSum);
+                console.log('OperatingAve:',this.OperatingAve);
+                console.log('DefectAve:',this.DefectAve);
+
             },
             error: (err) => console.error(err),
             });
@@ -832,6 +853,13 @@ export class UtilityKpiComponent {
                 }
                 // 工場全体の生産進捗勝ち負け表示
                 this.displayProdResult(PlanTotal,ProgTotal);
+
+                // 稼働率・不良率の平均値を計算(0は除外)
+                this.OperatingAve = averageNonZero1D(progPerplan);
+                this.DefectSum = addArrays(inlinedefByDay,visualdefByDay);
+                this.DefectAve = averageNonZero1D(this.DefectSum);
+                console.log('OperatingAve:',this.OperatingAve);
+                console.log('DefectAve:',this.DefectAve);
             },
             error: (err) => console.error(err),
             });

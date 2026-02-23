@@ -46,6 +46,22 @@ export class KpiService {
     );
   }
 
+  // 生産計画の最終更新日を取得
+  getDatePlan(type: number =0): Observable<any>{
+    const url = `${this.apiURL}/kpi/lastupdate/plan?type=${type}`;
+    return this.http.get<any>(url).pipe(
+        map((res) => res as any)    
+    );
+  }
+
+  // 生産計画の最終更新日を取得
+  getDateProd(factory: number =0,type: number =0): Observable<any>{
+    const url = `${this.apiURL}/kpi/lastupdate/prod?factory=${factory}&type=${type}`;
+    return this.http.get<any>(url).pipe(
+        map((res) => res as any)
+    );
+  }
+
   // 鍛造のKPIデータ取得
   getForgingKpi(factory: number =0,parts_no: string='',machine_name: string='', date: string=''): Observable<any>{
     const url = `${this.apiURL}/kpi/forging?factory=${factory}&parts_no=${parts_no}&machine_name=${machine_name}&date=${date}`;

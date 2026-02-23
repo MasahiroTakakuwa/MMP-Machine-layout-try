@@ -11,6 +11,7 @@ import { MachineModule } from './machine/machine.module';
 import { typeAsyncOrmMMPMachineConfig } from './configs/configuration-machine.mmp.config';
 import { KpiModule } from './kpi/kpi.module';
 import { PlanModule } from './plan/plan.module';
+import { SchedulerModule } from './scheduler/scheduler.module';
 
 @Module({
   imports: [
@@ -29,7 +30,8 @@ import { PlanModule } from './plan/plan.module';
     InputStopMachineModule,
     MachineModule,
     KpiModule,
-    PlanModule
+    PlanModule,
+    SchedulerModule
   ],
   providers: [],
 })

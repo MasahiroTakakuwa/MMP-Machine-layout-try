@@ -118,6 +118,58 @@ export class KpiService {
       return result;
   }
 
+// 生産計画の最終更新日を取得
+  async getLastUpdate_plan(type: number){
+    // 鍛造
+  if(type == 0){
+    const query = await this.FPlanRepo
+      .createQueryBuilder('m')
+      .select('m.updated_at AS updated_at')
+      .orderBy('m.updated_at','DESC')
+      .take(1);
+      const result = await query.getRawOne();
+      return result;      
+    }
+  // 切削
+  else if(type == 1){
+    const query = await this.MPlanRepo
+      .createQueryBuilder('m')
+      .select('m.updated_at AS updated_at')
+      .orderBy('m.updated_at','DESC')
+      .take(1);
+      const result = await query.getRawOne();
+      return result;
+    }
+
+  }
+
+// 直近の最終生産日を取得
+  async getLastUpdate_prod(factory: number ,type: number){
+    // 鍛造
+  if(type == 0){
+    const query = await this.ForgingRepo
+      .createQueryBuilder('m')
+      .select('m.prod_date AS prod_date')
+      .orderBy('m.prod_date','DESC')
+      .where('m.factory_type = :factory',{factory})
+      .take(1);
+      const result = await query.getRawOne();
+      return result;      
+    }
+  // 切削
+  else if(type == 1){
+    const query = await this.MachiningRepo
+      .createQueryBuilder('m')
+      .select('m.prod_date AS prod_date')
+      .orderBy('m.prod_date','DESC')
+      .where('m.factory_type = :factory',{factory})
+      .take(1);
+      const result = await query.getRawOne();
+      return result;
+    }
+
+  }
+
   // 鍛造の生産計画取得
   // 鍛造は工場内全設備or対象設備で絞り込み
   async getForgingPlan(factory: number, parts_no: string, machine_name: string){

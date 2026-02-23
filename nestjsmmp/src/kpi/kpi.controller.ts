@@ -40,6 +40,20 @@ export class KpiController {
       return this.KpiService.getproductSummary(factory,parts_no,date)
     }
 
+    // 生産計画の最終更新日を取得
+    @Get('lastupdate/plan')
+    getDatePlan(@Query('type') type: number){
+      return this.KpiService.getLastUpdate_plan(type)
+    }
+
+    // 直近の最終生産日を取得
+    @Get('lastupdate/prod')
+    getDateProd(@Query('factory') factory: number,
+                @Query('type') type: number
+    ){
+      return this.KpiService.getLastUpdate_prod(factory,type)
+    }
+
     // 鍛造のKPIデータ取得
     @Get('forging')
     async getForgingKpi(@Query('factory') factory: number,
