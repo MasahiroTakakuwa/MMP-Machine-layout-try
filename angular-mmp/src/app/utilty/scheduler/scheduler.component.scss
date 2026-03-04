@@ -9,5 +9,27 @@
   transform: scale(2.0);     /* 1.0 = 等倍。大きくしたい値に変更 */
 //   transform-origin: left center;
 //   margin-top: 20px;          /* 必要に応じて調整 */
+}
 
+::ng-deep .p-datatable-thead > tr > th,
+::ng-deep .p-datatable-tbody > tr > td{
+  text-align: center !important;
+  font-size: 24px;
+}
+
+.p-datatable td,
+.p-datatable th {
+    white-space: nowrap;
+    overflow: hidden;               /* はみ出しを隠す */
+    text-overflow: ellipsis;        /* 省略記号 (…) を表示 */
+}
+
+::ng-deep .p-datatable .p-datatable-tbody > tr.row-caution {
+  background-color: #ff0000;
+}
+::ng-deep .p-datatable .p-datatable-tbody > tr.row-warning {
+  background-color: #ffa600;
+}
+::ng-deep .p-datatable .p-datatable-tbody > tr.row-ok {
+  background-color: #91ff00;
 }

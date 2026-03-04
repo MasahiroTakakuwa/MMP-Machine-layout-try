@@ -1,6 +1,7 @@
 <p-toast position="top-right" key="test" appendTo="body"></p-toast>
 
 <p-fluid class="grid grid-cols-12 gap-8 px-4">
+    <!-- UI部分 ドロップダウンリスト・ボタンなど -->
     <div class="col-span-12 xl:col-span-12">
         <div class="card">
             <div class="p-formgroup-inline flex flex-wrap gap-3 align-items-center">
@@ -18,6 +19,11 @@
                 </div>
                 <div class="flex align-items-center gap-20">
                     <p-button label="更新" (onClick)="displayCharts()"></p-button>
+                    <!-- <p-button label="更新" (onClick)="displayChart_SumLines()"></p-button> -->
+                </div>
+                <div class="flex align-items-center gap-20">
+                    <p-button label="テスト" (onClick)="displayChart_SumLines()"></p-button>
+                    <!-- <p-button label="テスト" (onClick)="initCharts()"></p-button> -->
                 </div>
                 <div class="flex align-items-center gap-2">
                     <div class="font-semibold text-2xl">自動更新（60秒ごと）</div>
@@ -32,25 +38,108 @@
            </div>
         </div>
     </div>
-            
+    <!-- 表示部分　グラフ・データテーブル -->
     <div class="col-span-12 xl:col-span-12">
+        <div class="card flex flex-col gap-6 w-full">
+            <!-- 行全体の高さをここで設定 -->
+            <div class="flex flex-col md:flex-row gap-6">
+                <!-- 左側:Chart(画面の2/3) -->
+                <div class="flex flex-wrap gap-2 w-full md:basis-2/3">
+                    <div class=" gap-2 w-full">
+                        <p-chart type="bar" [data]="ToolChartGroups[0].Data" [options]="ToolChartGroups[0].Options" style="height: 550px;"></p-chart>
+                    </div>
+                    <div class=" gap-2 w-full">
+                        <p-chart type="bar" [data]="ToolChangeData" [options]="ToolchangeOptions" [plugins]="[midpointLabelPlugin]" style="height: 550px;"></p-chart>
+                    </div>
+                    <div class=" gap-2 w-full">
+                        <p-chart type="bar" [data]="ToolChangeData2" [options]="ToolchangeOptions2" [plugins]="[midpointLabelPlugin]" style="height: 550px;"></p-chart>
+                    </div>
+                </div>
+                <!-- 右側:Table(画面の1/3) -->
+                <div class="flex flex-wrap gap-2 w-full md:basis-1/3">
+                    <div class="w-full">
+                        <div class="font-semibold text-2xl mb-2">残り時間予測</div>
+                        <p-table [value]="rows" [columns]="cols" [paginator]="true" [rows]="10" [resizableColumns]="true"
+                                columnResizeMode="fit" [rowHover]="true" dataKey="machine_no" [responsiveLayout]="'scroll'">
+                            <ng-template pTemplate="colgroup" let-columns>
+                                <colgroup>
+                                <col *ngFor="let col of columns" [style.width]="col.width || 'auto'"/>
+                                </colgroup>
+                            </ng-template>
+                            <ng-template pTemplate="header" let-columns>
+                                <tr>
+                                <th *ngFor="let col of columns" pResizableColumn>
+                                    {{ col.header }}
+                                </th>
+                                </tr>
+                            </ng-template>
+                            <ng-template pTemplate="body" let-row let-columns="columns">
+                                <tr [ngClass]="rowStyleClass(row)">
+                                <td *ngFor="let col of columns">
+                                    {{ row[col.field] }}
+                                </td>
+                                </tr>
+                            </ng-template>
+                        </p-table>
+                    </div>                    
+                </div>
+            </div>
+        </div>
+    </div>
+
+
+    <!-- <div class="col-span-12 xl:col-span-12">
         <div class="card">
-            <!-- <div class="font-semibold text-2xl mb-2">設備1</div> -->
+            <p-table [value]="rows" [columns]="cols" [paginator]="true" [rows]="10" [resizableColumns]="true"
+                    columnResizeMode="fit" [rowHover]="true" dataKey="machine_no" [responsiveLayout]="'scroll'">
+                <ng-template pTemplate="colgroup" let-columns>
+                    <colgroup>
+                    <col *ngFor="let col of columns" [style.width]="col.width || 'auto'"/>
+                    </colgroup>
+                </ng-template>
+                <ng-template pTemplate="header" let-columns>
+                    <tr>
+                    <th *ngFor="let col of columns" pResizableColumn>
+                        {{ col.header }}
+                    </th>
+                    </tr>
+                </ng-template>
+                <ng-template pTemplate="body" let-row let-columns="columns">
+                    <tr>
+                    <td *ngFor="let col of columns">
+                        {{ row[col.field] }}
+                    </td>
+                    </tr>
+                </ng-template>
+            </p-table>
+        </div>
+    </div> -->
+
+    <!-- 以下バックアップとして一時コメントアウト -->
+    <!-- <div class="col-span-12 xl:col-span-12">
+        <div class="card">
+            <div class="font-semibold text-2xl mb-2">設備1</div>
             <p-chart type="bar" [data]="ToolChartGroups[0].Data" [options]="ToolChartGroups[0].Options" style="height: 550px;"></p-chart>
         </div>
-    </div>
+    </div> -->
 
-    <div class="col-span-12 xl:col-span-12">
-        <div class="card">        
+    <!-- <div class="col-span-12 xl:col-span-12">
+        <div class="card">         -->
             <!-- <div class="font-semibold text-2xl mb-2">設備2</div> -->
-            <p-chart type="bar" [data]="ToolChartGroups[1].Data" [options]="ToolChartGroups[1].Options" style="height: 550px;"></p-chart>
-        </div>
-    </div>
+            <!-- <p-chart type="bar" [data]="ToolChartGroups[1].Data" [options]="ToolChartGroups[1].Options" style="height: 550px;"></p-chart> -->
+            <!-- <p-chart type="bar" [data]="ToolChangeData" [options]="ToolchangeOptions" style="height: 550px;"></p-chart> -->
+            <!-- <p-chart type="bar" [data]="ToolChangeData" [options]="ToolchangeOptions" [plugins]="[midpointLabelPlugin]" style="height: 550px;"></p-chart> -->
+        <!-- </div>
+    </div> -->
 
-    <div class="col-span-12 xl:col-span-12">
-        <div class="card">        
+    <!-- <div class="col-span-12 xl:col-span-12">
+        <div class="card">         -->
             <!-- <div class="font-semibold text-2xl mb-2">設備3</div> -->
-            <p-chart type="bar" [data]="ToolChartGroups[2].Data" [options]="ToolChartGroups[2].Options" style="height: 550px;"></p-chart>
-        </div>
-    </div>
+            <!-- <p-chart type="bar" [data]="ToolChartGroups[2].Data" [options]="ToolChartGroups[2].Options" style="height: 550px;"></p-chart> -->
+            <!-- <p-chart type="bar" [data]="ToolChangeData2" [options]="ToolchangeOptions2" style="height: 550px;"></p-chart> -->
+            <!-- <p-chart type="bar" [data]="ToolChangeData2" [options]="ToolchangeOptions2" [plugins]="[midpointLabelPlugin]" style="height: 550px;"></p-chart> -->
+        <!-- </div>
+    </div> -->
+    <!-- ここまで -->
+    
 </p-fluid>

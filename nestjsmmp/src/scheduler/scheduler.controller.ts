@@ -19,4 +19,9 @@ export class SchedulerController{
         return this.SchedulerService.getMinutesLeft(factory,header,footer)
     }
 
+    @Get('asc')
+    getTop10Left(@Query('factory') factory:number,@Query('headers') headers:number[],@Query('footers') footers:number[]){
+        return this.SchedulerService.getTop10MinutesLeft(factory,headers,footers)
+    }
+
 }

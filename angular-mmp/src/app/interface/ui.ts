@@ -1,3 +1,5 @@
+import { Color } from "chart.js";
+
 export interface FactoryOption {
     name: string;
     code: number;
@@ -39,4 +41,8 @@ export interface LastUpdatedPlan {
 }
 export interface LastUpdatedProd {
     prod_date: Date;
+}
+export interface ChartColerGroup {
+    flag: number[];
+    color: string;
 }

@@ -1,5 +1,5 @@
 import { Injectable } from "@nestjs/common";
-import { EntityManager, In, Repository } from "typeorm";
+import { Brackets, EntityManager, In, Repository } from "typeorm";
 import { InjectRepository } from "@nestjs/typeorm";
 import { PartsMachines } from "./models/parts-machines.entity";
 import { MachiningTool } from "./models/machining-tool-progress.entity";
@@ -57,6 +57,96 @@ export class SchedulerService {
         .andWhere('m.minutes_left <= 360');
         const result = await query.getRawMany();
         return result;
+    }
+
+    // 刃具交換までの時間が近い上位10件を取得
+    // async getTop10MinutesLeft(factory:number,headers:number[],footers:number[]){
+    //     if(headers.length === footers.length){
+    //         const query = await this.MachiningToolRepo
+    //         .createQueryBuilder('m')
+    //         .select(['m.minutes_left AS minutes_left',
+    //                 'm.machine_no AS machine_no',
+    //                 'm.tool_no AS tool_no'
+    //         ])
+    //         .where('m.factory_type = :factory',{factory})
+    //         .orderBy('m.minutes_left','ASC')
+    //         .take(10);
+    //         query.andWhere(
+    //             new Brackets((br) => {
+    //                 for(let i=0;i<headers.length;i++){
+    //                     const h = headers[i];
+    //                     const f = footers[i];
+    //                     br.orWhere(`m.machine_no BETWEEN :h${i} AND :f${i}`,
+    //                         {[`h${i}`]:h, [`f${i}`]:f,}
+    //                     );
+    //                 }
+                    
+    //             }),
+
+    //         );
+    //         return await query.getRawMany();
+    //     }
+        
+    // }
+
+    // 刃具交換の近い設備10件の取得
+    async getTop10MinutesLeft(factory:number,headers:number[],footers:number[]){
+        if(headers.length !== footers.length){
+            return [];
+        }
+        const query = await this.MachiningToolRepo
+            .createQueryBuilder('m')
+            .select(['m.minutes_left AS minutes_left',
+                    'm.machine_no AS machine_no',
+                    'm.tool_no AS tool_no'
+            ])
+            .where('m.factory_type = :factory',{factory})
+            .orderBy('m.minutes_left','ASC')
+            .take(10);
+            query.andWhere(
+                new Brackets((br) => {
+                    for(let i=0;i<headers.length;i++){
+                        const h = headers[i];
+                        const f = footers[i];
+                        br.orWhere(`m.machine_no BETWEEN :h${i} AND :f${i}`,
+                            {[`h${i}`]:h, [`f${i}`]:f,}
+                        );
+                    }
+                    
+                }),
+
+            );
+            
+        // 10件取得
+        const top10 = await query.getRawMany();
+        const results = [];
+        for(const row of top10){
+            const machineData = await this.getMachineDataBetweenRange(factory,row.machine_no);
+            let formatted = null;
+            if(machineData){
+                formatted = `${machineData.parts_name}  ${machineData.line_no}`;
+            }
+            results.push({
+                ...row,
+                machineData: formatted
+            });
+        }
+        return results;
+    }
+
+
+    async getMachineDataBetweenRange(factory:number,machine_no:number){
+        const query = await this.PartsMachinesRepo
+        .createQueryBuilder('m')
+        .select(['m.parts_name AS parts_name',
+            'm.line_no AS line_no'
+        ])
+        .where('m.factory_type = :factory', {factory})
+        .andWhere('m.header_machine <= :machine_no',{machine_no})
+        .andWhere('m.footer_machine >= :machine_no',{machine_no});
+        const result = await query.getRawOne();
+        return result;
+
     }
 
 }
