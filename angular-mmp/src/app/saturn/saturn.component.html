@@ -23,6 +23,7 @@ src/app/saturn/saturn.component.html
 <p-fluid class="grid grid-cols-12 gap-2">
         <!-- 12分割してそのうち3列分を取得 -->
         <div class="col-span-12 xl:col-span-1 flex-col h-full">
+          <div class="saturn-page-table">
             <!-- tableを配置(稼働台数などを表示) -->       
             <p-table 
                 [value]="items"
@@ -31,18 +32,14 @@ src/app/saturn/saturn.component.html
                 class="p-datatable-sm flex-grow"
                 [style]=" {height: '100%'} "
                 >
-            <!-- <ng-template pTemplate="header" let-columns>
-                <tr>
-                <th *ngFor="let col of columns" [ngClass]="col.styleClass">{{ col.header }}</th>
-                </tr>
-            </ng-template> -->
-            <ng-template pTemplate="body" let-rowData let-columns="columns">
-                <tr>
-                <td *ngFor="let col of columns" [ngClass]="col.styleClass">{{ rowData[col.field] }}</td>
-                </tr>
-            </ng-template>
+            
+              <ng-template pTemplate="body" let-rowData let-columns="columns">
+                  <tr>
+                  <td *ngFor="let col of columns" [ngClass]="col.styleClass">{{ rowData[col.field] }}</td>
+                  </tr>
+              </ng-template>
             </p-table>
-
+          </div>
         </div>
         <div class="col-span-12 xl:col-span-11">
             <!-- 工場レイアウトを貼り付け -->
