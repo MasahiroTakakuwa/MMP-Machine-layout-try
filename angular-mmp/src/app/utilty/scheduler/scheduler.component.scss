@@ -37,3 +37,23 @@
     }
   }
 }
+
+.scheduler-toggle {
+  // ON時
+  .p-togglebutton.p-highlight {
+    background: #0ea5e9;      /* シアン */
+    border-color: #0284c7;
+    color: #fff;
+  }
+  // OFF時
+  .p-togglebutton {
+    background: #e5e7eb;      /* グレー */
+    border-color: #d1d5db;
+    color: #111827;
+  }
+}
+
+.schedule-chart {
+  .p-chart { display: block; width: 100%; }
+  .p-chart > canvas { height: 100% !important; width: 100% !important; }
+}

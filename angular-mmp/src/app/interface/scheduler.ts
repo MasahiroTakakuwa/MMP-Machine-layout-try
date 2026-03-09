@@ -36,3 +36,15 @@ export interface ColumnDef{
     header: string,
     width?: string
 }
+
+export interface Grouplist{
+    parts_name: string,
+    group_no: number,
+    line_no: number
+}
+
+export interface LineItems{
+    line_name: string,
+    header: number,
+    footer: number
+}

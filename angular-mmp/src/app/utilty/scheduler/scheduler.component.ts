@@ -1,10 +1,9 @@
-import { Component, OnInit, OnDestroy,ViewChild } from "@angular/core";
+import { Component, OnInit, OnDestroy,ViewChild,ViewChildren,QueryList, ChangeDetectorRef } from "@angular/core";
 import { ActivatedRoute } from "@angular/router";
 import { CommonModule } from "@angular/common";
 import { FormsModule } from "@angular/forms";
-
 import { ButtonModule } from "primeng/button";
-import { ChartModule } from "primeng/chart";
+import { UIChart,ChartModule } from "primeng/chart";
 import { CheckboxModule } from "primeng/checkbox";
 import { DropdownModule } from "primeng/dropdown";
 import { FluidModule } from "primeng/fluid";
@@ -13,32 +12,33 @@ import { ToastModule } from "primeng/toast";
 import { ToggleButtonModule } from "primeng/togglebutton";
 import { MessageService } from "primeng/api";
 import { MessageModule } from "primeng/message";
-
 import { Chart, LegendItem, ScriptableScaleContext } from "chart.js";
-
-import { debounceTime, forkJoin, Subject, Subscription, startWith, switchMap, takeUntil, timer, of, filter, BehaviorSubject, from } from 'rxjs';
-import { concatMap, map, tap, catchError } from "rxjs";
+import { debounceTime, forkJoin, Subject, Subscription, startWith, switchMap, takeUntil, timer, of, filter, BehaviorSubject, Observable } from 'rxjs';
+import { concatMap, map, tap, take, catchError } from "rxjs";
 
 import { LayoutService } from "../../layout/service/layout.service";
 import { SchedulerService } from "../../services/scheduler.service";
-
 import { FactoryOption,Dropdownitem,LineListGroup,ChartDataGroup,ChartColerGroup } from "../../interface/ui";
-import { IFooter, IMachinelist, IToolprogerss, MachineRow, ColumnDef } from "../../interface/scheduler";
+import { IFooter, IMachinelist, IToolprogerss, MachineRow, ColumnDef, Grouplist, LineItems } from "../../interface/scheduler";
+import { deepMerge, toBackgroundColors, toNumber, legendColorMap_Tools, legendColorMap_Counts } from "../../shared/utils";
 
-import { toBackgroundColors, legendColorMap_Tools, legendColorMap_Counts } from "../../shared/utils";
 
+// 検証用
+type BarDataSet = {
+  type: 'bar';
+  label: string;
+  data?: number[];
+  backgroundColor?: string | string[];
+  borderWidth?: number;
+};
 
-// "残り時間(分)" を数値に正規化するヘルパー
-    export function toNumber(val: unknown): number {
-    if (val == null) return NaN;
-    // 文字列の場合、全角数字→半角、カンマ除去、前後空白除去
-    const s = String(val)
-        .replace(/[０-９]/g, d => String.fromCharCode(d.charCodeAt(0) - 0xFEE0))
-        .replace(/,/g, '')
-        .trim();
-    const n = parseFloat(s);
-    return Number.isFinite(n) ? n : NaN;
-    }
+type Options = any;
+
+// Chartデータ切替
+type ToolResult = { idx: number; kind: 'tool'; histByTool: Map<string, number[]> };
+type LineResult = { idx: number; kind: 'line'; histByLine: Map<number, number[]> };
+type HistogramResult = ToolResult | LineResult;
+// ここまで
 
 @Component({
     selector: 'app-utility-scheduler',
@@ -51,9 +51,10 @@ import { toBackgroundColors, legendColorMap_Tools, legendColorMap_Counts } from 
 })
 
 export class UtilitySchedulerComponent implements OnInit, OnDestroy {
+    @ViewChild('chart') chart?: any;
+    @ViewChildren(UIChart) charts!: QueryList<UIChart>;
 
     private destroy$ = new Subject<void>();
-    
     checked = false;
     private checked$ = new BehaviorSubject<boolean>(false);
     view = { tick: 0, lastUpdated: new Date() };
@@ -61,10 +62,19 @@ export class UtilitySchedulerComponent implements OnInit, OnDestroy {
     factory = '';
     subscription: Subscription;
 
+    private static pluginsRegistered = false;
+    private registerPluginsOnce() {
+        if (UtilitySchedulerComponent.pluginsRegistered) return;
+        Chart.register(this.midpointLabelPlugin);
+        UtilitySchedulerComponent.pluginsRegistered = true;
+    }
+
     // 軸ラベル位置変更のカスタムプラグイン
     public midpointLabelPlugin = {
         id: 'midpointLabelPlugin',
         afterDatasetsDraw: (chart: any) => {
+            const enabled = chart.options?.plugins.midpointLabelPlugin?.enabled;
+            if(enabled !== true) return;
 
             // 1) プラグイン設定の取得
             const opt = chart.options?.plugins?.midpointLabelPlugin ?? {};
@@ -150,12 +160,12 @@ export class UtilitySchedulerComponent implements OnInit, OnDestroy {
         return { [className]: true };
     };
 
-
     constructor(
         private route: ActivatedRoute,
         private layoutService: LayoutService,
         private schedulerService: SchedulerService,
-        private messageService: MessageService
+        private messageService: MessageService,
+        private cdr: ChangeDetectorRef
         ) {
         // ページのルートパラメータが変わるたびに更新する様に設定。
         this.route.paramMap.subscribe(params => {
@@ -188,7 +198,9 @@ export class UtilitySchedulerComponent implements OnInit, OnDestroy {
             {values:[],value:null},
             {values:[],value:null},
         ];
-
+        
+        selectGroupValues: IMachinelist[] = [];
+        lineItems: LineItems[] = [];
         headerArray: number[] = [];
         footerArray: number[] = [];
 
@@ -202,6 +214,10 @@ export class UtilitySchedulerComponent implements OnInit, OnDestroy {
 
         rows: MachineRow[] = [];
 
+        // toggleswitchの設定
+        toggleValue: boolean = true;            // true:ライン別　false:グループ別
+        toggleDisabled: boolean = false;        // ボタン動作を許可
+        
         // 刃具交換本数積み上げ棒グラフ用チャートデータ
         ToolChangeData: any;
         ToolchangeOptions: any;
@@ -212,9 +228,350 @@ export class UtilitySchedulerComponent implements OnInit, OnDestroy {
             {Data: null,Options: null},
             {Data: null,Options: null},
         ];
+        ToolChartGroups2: ChartDataGroup[] = [];        // 検証用(正常動作確認後、リネーム)
         ToolChartTitles: string[] =["設備1","設備2","設備3"];
 
-        // 検証用
+        // トグルスイッチでのグラフ切替検証
+        // 共通(グラフ横軸ラベル)
+        readonly labels = [0,15,30,45,60,75,90,105,120,135,150,165,180,195,210,225,240,255,270,285,300,315,330,345,360];
+
+        // p-chart データバインド用
+        data = this.buildDataPattern1();
+        options: Options = deepMerge(this.baseOptions(), this.deltaPattern1());
+        public usePattern1 = true;      // 切替状態
+        totalChartAreaHeight = 900;     // px換算
+        chartHeight = 300;              // 各チャートの高さ(自動計算で更新)
+        pattern1ChartCount = 3;         // パターン1の初期枚数
+        trackByIndex = (index: number) => index;    // .htmlの*ngforで使用
+        
+        // ToolChartGroupsの長さを必要数に合わせる
+        private updateChartGroups(desiredCount: number){
+            const current = this.ToolChartGroups2.length;
+            if(current > desiredCount){
+                this.ToolChartGroups2 = this.ToolChartGroups2.slice(0,desiredCount);
+            }
+            else if(current < desiredCount){
+                for(let i = current; i < desiredCount; i++){
+                    this.ToolChartGroups2.push({Data: null as any, Options: {} as Options});
+
+                }
+            }
+        }
+        
+        /** パターンに応じた個数と高さを決定 → Data/Options を全チャートに適用 → 描画更新 */
+        private rebuildAndApply() {
+            // 1) 枚数の決定
+            const desiredCount = this.usePattern1 ? Math.max(1, this.pattern1ChartCount | 0) : 1;
+
+            // 2) 配列長調整
+            this.updateChartGroups(desiredCount);
+
+            // 3) 高さ計算（Pattern1 は分割、Pattern2 は 1 つ = 1650）
+            this.chartHeight = Math.floor(this.totalChartAreaHeight / desiredCount);
+            console.log('height:',this.chartHeight);
+
+            // 4) Data/Options の生成（既存ロジックを踏襲）
+            const data = this.usePattern1 ? this.buildDataPattern1() : this.buildDataPattern2();
+            const base = this.baseOptions();
+            const delta = this.usePattern1 ? this.deltaPattern1() : this.deltaPattern2();
+
+            // Pattern2 のときだけ midpointLabelPlugin を有効化する、という既存方針を維持
+            const pluginOpt = this.usePattern1
+            ? { enabled: false }
+            : { enabled: true, labels: ['1', '2', '3'], format: 'range' as const };
+
+            const merged = deepMerge(base, delta);
+            const options = deepMerge(merged, { plugins: { midpointLabelPlugin: pluginOpt } });
+
+            // 5) 全チャートへ適用
+            for (let i = 0; i < this.ToolChartGroups2.length; i++) {
+            // ※ 同一参照だとプラグイン内部状態が共有されることがあるため、気になる場合は clone を検討
+            this.ToolChartGroups2[i].Data = data;
+            this.ToolChartGroups2[i].Options = options;
+            }
+
+            // 6) すべての <p-chart> を更新
+            queueMicrotask(() => {
+            this.charts?.forEach(c => {
+                try {
+                c.chart?.update('none'); // アニメ無効の高速更新
+                } catch {
+                c.refresh();
+                }
+            });
+            });
+
+            this.applyHeightAndRedraw();
+        }
+      
+        private applyHeightAndRedraw() {
+            // 1) 変更検知を先に走らせて DOM (height) を反映
+            this.cdr.detectChanges();
+
+            // 2) 次のフレームで Chart.js にサイズ再計算を促す
+            setTimeout(() => {
+                this.charts?.forEach((c) => {
+                const anyC = c as any;
+
+                // A) data/options が大きく変わった場合は reinit() が一番確実
+                if (typeof anyC.reinit === 'function') {
+                    anyC.reinit();
+                }
+
+                // B) Chart.js のインスタンスがあるなら resize → update（アニメ無し）
+                const inst = anyC.chart;
+                if (inst?.resize) inst.resize();             // 親サイズを取り直す
+                if (inst?.update) inst.update('none');       // レイアウトを再計算して描画
+                else if (typeof anyC.refresh === 'function') anyC.refresh(); // 旧APIフォールバック
+                });
+            }, 0);
+        }
+
+
+        // データセットの切り替えパターンを予め作成
+        // パターン1:ライン別
+        private buildDataPattern1() {
+            const datasets: BarDataSet[] = [
+            { type: 'bar', label: 'T1', backgroundColor: '#ff0000ff', data: [1, 1, 1, 1, 1] },
+            { type: 'bar', label: 'T2', backgroundColor: '#81bb66',   data: [1, 1, 1, 1, 0] },
+            { type: 'bar', label: 'T3', backgroundColor: '#ffbb00',   data: [1, 1, 1, 0, 0] },
+            { type: 'bar', label: 'T4', backgroundColor: '#0011fd',   data: [1, 1, 0, 0, 0] },
+            { type: 'bar', label: 'T5', backgroundColor: '#a200ff',   data: [1, 0, 0, 0, 0] },
+            ];
+            return {
+            labels: this.labels,
+            datasets
+            };
+        }
+        // パターン2:グループ別
+        private buildDataPattern2() {
+            const datasets: BarDataSet[] = [
+            {
+                type: 'bar',
+                label: '1本',
+                data: this.pattern1,
+                backgroundColor: toBackgroundColors(this.pattern1),
+                borderWidth: 0
+            },
+            {
+                type: 'bar',
+                label: '2本',
+                data: this.pattern2,
+                backgroundColor: toBackgroundColors(this.pattern2),
+                borderWidth: 0
+            },
+            {
+                type: 'bar',
+                label: '3本',
+                data: this.pattern3,
+                backgroundColor: toBackgroundColors(this.pattern3),
+                borderWidth: 0
+            },
+            {
+                type: 'bar',
+                label: '4本',
+                // data: this.pattern4, // 値が無ければ undefined のまま
+                // backgroundColor: this.pattern4 ? toBackgroundColors(this.pattern4) : undefined,
+                borderWidth: 0
+            },
+            {
+                type: 'bar',
+                label: '5本',
+                // data: this.pattern5,
+                // backgroundColor: this.pattern5 ? toBackgroundColors(this.pattern5) : undefined,
+                borderWidth: 0
+            }
+            ];
+            return {
+            labels: this.labels,
+            datasets
+            };
+        }
+
+        // オプションの共通部分       
+        private baseOptions(textColor = '#333', textColorSecondary = '#666', surfaceBorder = '#e0e0e0'): Options {
+            const gridLineWidth = (ctx: ScriptableScaleContext) => {
+            if (typeof ctx.index === 'number' && ctx.index % 4 === 0) return 2;
+            return undefined;
+            };
+            const gridLineColor = (ctx: ScriptableScaleContext) => {
+            if (typeof ctx.index === 'number' && ctx.index % 4 === 0) return 'rgba(255, 0, 0, 0.85)';
+            return undefined;
+            };
+
+            return {
+            maintainAspectRatio: false,
+            aspectRatio: 1.0,
+            responsive: true,
+            interaction: { mode: 'index', intersect: false }, // 追加推奨（ツールチップ等の安定化）
+            plugins: {
+                // title/legend/tooltip は各パターンで上書き
+            },
+            scales: {
+                x: {
+                stacked: true,
+                offset: false,
+                title: {
+                    display: true,
+                    text: '[分後]',
+                    font: { size: 18 },
+                    padding: { top: 8, bottom: 0 }
+                },
+                ticks: {
+                    font: { weight: 500, size: 20 }
+                },
+                grid: {
+                    offset: false,
+                    lineWidth: gridLineWidth,
+                    color: gridLineColor
+                }
+                },
+                y: {
+                type: 'linear',
+                position: 'left',
+                stacked: true,
+                grid: { color: surfaceBorder, drawBorder: false },
+                // title/ticks は各パターンで上書き
+                }
+            }
+            };
+        }
+
+        // === パターン1の delta ===
+        private deltaPattern1(textColor = '#333', textColorSecondary = '#666'): Options {
+            return {
+            plugins: {
+                title: {
+                display: true,
+                position: 'top',
+                align: 'start',
+                text: 'ライン単体 縦軸:交換数',
+                font: { size: 20 }
+                },
+                legend: {
+                position: 'right',
+                labels: {
+                    color: textColor,
+                    font: { size: 20 }
+                }
+                }
+            },
+            scales: {
+                y: {
+                title: {
+                    display: true,
+                    text: '[本]',
+                    font: { size: 18 },
+                    padding: { top: 0, bottom: 8 }
+                },
+                ticks: {
+                    color: textColorSecondary,
+                    beginAtZero: false,
+                    precision: 0,
+                    font: { size: 20 },
+                    max: 20
+                }
+                }
+            }
+            };
+        }
+
+        // === パターン2の delta ===
+        private deltaPattern2(textColor = '#333', textColorSecondary = '#666'): Options {
+            return {
+            plugins: {
+                title: {
+                display: true,
+                position: 'top',
+                align: 'start',
+                text: '製品別 縦軸:ライン番号',
+                font: { size: 20 }
+                },
+                legend: {
+                position: 'right',
+                labels: {
+                    color: textColor,
+                    font: { size: 20 },
+                    generateLabels: (chart: Chart): LegendItem[] => {
+                    const items = Chart.defaults.plugins.legend.labels.generateLabels(chart);
+                    items.forEach((item) => {
+                        const text = item.text;
+                        const fillColor = legendColorMap_Counts[text];
+                        if (fillColor) {
+                            item.fillStyle = fillColor;
+                            item.lineWidth = 0;
+                            return;
+                        }
+                    });
+                    return items;
+                    }
+                }
+                },
+                // カスタムプラグイン（ランタイム切替は options.plugins に定義するだけが安全）
+                midpointLabelPlugin: {
+                labels: ['1', '2', '3'],
+                format: 'range'
+                }
+            },
+            scales: {
+                y: {
+                max: 3,
+                title: {
+                    display: true,
+                    text: '[ライン]',
+                    font: { size: 18 },
+                    padding: { top: 0, bottom: 8 }
+                },
+                ticks: {
+                    display: false, // 目盛非表示
+                    color: textColorSecondary,
+                    beginAtZero: false,
+                    precision: 0,
+                    font: { size: 20 }
+                }
+                }
+            }
+            };
+        }
+
+        // === トグル処理 ===
+        toggleDataset() {
+            this.usePattern1 = !this.usePattern1;
+            this.data = this.usePattern1 ? this.buildDataPattern1() : this.buildDataPattern2();
+            const base = this.baseOptions();
+            const delta = this.usePattern1 ? this.deltaPattern1() : this.deltaPattern2();
+            const pluginOpt = this.usePattern1 ? { enabled: false } : { enabled: true, labels: ['1','2','3'], format: 'range' };
+            const merged = deepMerge(base, delta);
+            this.options = deepMerge(merged, { plugins: { midpointLabelPlugin: pluginOpt } });
+
+            for(let i = 0;i < this.ToolChartGroups.length;i++){
+                this.ToolChartGroups[i].Data = this.data;
+                this.ToolChartGroups[i].Options = this.options;
+
+                try {
+                    this.chart?.chart?.update('none');
+                    } catch {
+                    this.chart?.refresh();
+                }
+
+            }
+            
+        }
+
+        toggleDataset2(countForPattern1?: number){
+            if (typeof countForPattern1 === 'number'){
+                // this.usePattern1 = true;
+                this.pattern1ChartCount = Math.max(1,countForPattern1 | 0);
+            }
+            else{
+                // this.usePattern1 = !this.usePattern1;
+            }
+            this.rebuildAndApply();
+
+        }
+
+        // ここまで
+
         flags1: number[] = [1,0,0,0,1];
         flags2: number[] = [0,1,0,1,0];
         flags3: number[] = [0,0,1,0,0];
@@ -223,32 +580,30 @@ export class UtilitySchedulerComponent implements OnInit, OnDestroy {
         pattern2: number[] = [5,4,3,2,1];
         pattern3: number[] = [2,4,0,1,3];
 
-        ColerPattern: string[] = ['transparent','#81bb66','#a200ff','#0011fd','#ffbb00','#ff0000ff'];
-        ColorChangeGroups: ChartColerGroup[] =[
-            {flag: this.flags1,color: '#ff0000ff' },
-            {flag: this.flags2,color: '#ff0000ff' },
-            {flag: this.flags3,color: '#ff0000ff' },
-            {flag: this.flags2,color: '#ff0000ff' },
-            {flag: this.flags1,color: '#ff0000ff' },
-        ];
-        ColorChangeGroups2: ChartColerGroup[] =[
-            {flag: this.flags1,color: '#ff0000ff' },
-            {flag: this.flags2,color: '#ff0000ff' },
-            {flag: this.flags3,color: '#ff0000ff' },
-            {flag: this.flags2,color: '#ff0000ff' },
-            {flag: this.flags1,color: '#ff0000ff' },
+        // ColerPattern: string[] = ['transparent','#81bb66','#a200ff','#0011fd','#ffbb00','#ff0000ff'];
+        // ColorChangeGroups: ChartColerGroup[] =[
+        //     {flag: this.flags1,color: '#ff0000ff' },
+        //     {flag: this.flags2,color: '#ff0000ff' },
+        //     {flag: this.flags3,color: '#ff0000ff' },
+        //     {flag: this.flags2,color: '#ff0000ff' },
+        //     {flag: this.flags1,color: '#ff0000ff' },
+        // ];
+        // ColorChangeGroups2: ChartColerGroup[] =[
+        //     {flag: this.flags1,color: '#ff0000ff' },
+        //     {flag: this.flags2,color: '#ff0000ff' },
+        //     {flag: this.flags3,color: '#ff0000ff' },
+        //     {flag: this.flags2,color: '#ff0000ff' },
+        //     {flag: this.flags1,color: '#ff0000ff' },
 
-        ];
-
-        
+        // ];
 
     // ブラウザ立上げ時
     ngOnInit(){
+        this.registerPluginsOnce();
         this.route.paramMap.subscribe(params => {
             const name = params.get('factory');
             this.factoryNo = this.factoryCode.find(x => x.name === name)?.code ?? 0;
-            this.loadDropdownItems(this.factoryNo);
-            // this.updateToggleState(this.factoryNo);
+            this.checkPartsGroups(this.factoryNo);
             this.initCharts();
             
         });
@@ -291,8 +646,61 @@ export class UtilitySchedulerComponent implements OnInit, OnDestroy {
         
     }
 
-    // 検証用(footer_machineの値を配列に格納)
-    testFunction(headers: number[],footers: number[]){
+    // 検証用
+    // 品番・係別でドロップダウンを生成
+    checkPartsGroups(factoryCode: number) {
+        this.schedulerService.getPartsGroupNo(factoryCode).subscribe((items: Grouplist[]) =>
+        {
+            const getItems = items.map(item => ({
+                name: item.parts_name+" "+String(item.line_no)+"～",
+                code: item.group_no
+            }));
+            this.lineGroups[0].values = [...getItems];
+
+        });
+        this.lineGroups[0].value = null;
+    }
+
+    // ドロップダウンリストが変更された時
+    onDropdownChange(){
+        const group = this.lineGroups[0].value?.code
+        // 未選択の場合は何もせず戻る
+        if(group === undefined) return;
+        // 選択した製品グループのヘッダー・フッターアドレスを取得し格納
+        this.schedulerService.getHeaderToFooter(this.factoryNo,group).pipe(
+            take(1),    //1回だけ取得し完了(メモリリーク対策)
+            map((items: IMachinelist[]) => 
+                items.map(item => ({
+                    line_name: item.parts_name+" "+String(item.line_no),
+                    header: item.header_machine,
+                    footer: item.footer_machine
+                }))
+            ),
+            tap(mapped => this.lineItems = mapped))
+            .subscribe();
+    }
+
+    // ユーザーがトグルを押した時のハンドラ
+    onToggleChange(): void {
+        // Chartのデータセット、オプションを切替
+        // this.toggleDataset();
+        this.usePattern1 = !this.usePattern1;
+        if(this.usePattern1){
+            const count = this.lineItems.length | 1;
+            this.toggleDataset2(count);
+            
+        }
+        else{
+            this.toggleDataset2();
+        }
+        
+        
+    }
+
+    // ここまで
+
+    // 交換時期の近い刃具10件を取得
+    checkToolchangeTiming(headers: number[],footers: number[]){
         const factory = this.factoryNo | 0;
         // 配列内の0(未選択)を排除 ※2つの配列は同じ長さかつ0になるインデックスも同じ位置
         const idx = headers.findIndex(value => value === 0);
@@ -310,6 +718,7 @@ export class UtilitySchedulerComponent implements OnInit, OnDestroy {
         this.checked$.next(isOn);
     }
 
+    // 表示内容の自動更新
     private setupAutoRefresh() {
         this.checked$
         .pipe(
@@ -334,7 +743,7 @@ export class UtilitySchedulerComponent implements OnInit, OnDestroy {
         const textColor = documentStyle.getPropertyValue('--text-color');
         const textColorSecondary = documentStyle.getPropertyValue('--text-color-secondary');
         const surfaceBorder = documentStyle.getPropertyValue('--surface-border');
-        
+        const BUCKETS = 25;
         // 刃具交換本数
         // 各グラフエリアを設定
         for(let i = 0;i < this.ToolChartGroups.length;i++){
@@ -345,36 +754,31 @@ export class UtilitySchedulerComponent implements OnInit, OnDestroy {
                 type: 'bar',
                 label: 'T1',
                 backgroundColor: '#ff0000ff',
-                data: [1, 1, 1, 1, 1],
-                // yAxisID: 'y'
+                data: Array(BUCKETS).fill(0),
                 },
                 {
                 type: 'bar',
                 label: 'T2',
                 backgroundColor: '#81bb66',
-                data: [1, 1, 1, 1, 0],
-                // yAxisID: 'y'
+                data: Array(BUCKETS).fill(0),
                 },
                 {
                 type: 'bar',
                 label: 'T3',
                 backgroundColor: '#ffbb00',
-                data: [1, 1, 1, 0, 0],
-                // yAxisID: 'y'
+                data: Array(BUCKETS).fill(0),
                 },
                 {
                 type: 'bar',
                 label: 'T4',
                 backgroundColor: '#0011fd',
-                data: [1, 1, 0, 0, 0],
-                // yAxisID: 'y'
+                data: Array(BUCKETS).fill(0),
                 },
                 {
                 type: 'bar',
                 label: 'T5',
                 backgroundColor: '#a200ff',
-                data: [1, 0, 0, 0, 0],
-                // yAxisID: 'y'
+                data: Array(BUCKETS).fill(0),
                 },
                 
             ]
@@ -468,183 +872,183 @@ export class UtilitySchedulerComponent implements OnInit, OnDestroy {
         }
 
         // 見え方検証用(transparentで透明化+凡例を固定表示)
-        this.ToolChangeData = {
-            labels: [0,15,30,45,60,75,90,105,120,135,150,165,180,195,210,225,240,255,270,285,300,315,330,345,360],
-            datasets: [
-                {
-                type: 'bar',
-                label: 'T1',
-                data: [1, 1, 1, 1, 1],
-                backgroundColor: (context: any) => {
-                    const i = context.dataIndex;
-                    return this.ColorChangeGroups[0].flag[i] === 0 ? 'transparent' : '#ff0000ff'
-                },
-                borderWidth:0,
-                // yAxisID: 'y'
-                },
-                {
-                type: 'bar',
-                label: 'T2',
-                data: [1, 1, 1, 1, 1],
-                backgroundColor: (context: any) => {
-                    const i = context.dataIndex;
-                    return this.ColorChangeGroups[1].flag[i] === 0 ? 'transparent' : '#81bb66'
-                },
-                borderWidth:0,
-                // yAxisID: 'y'
-                },
-                {
-                type: 'bar',
-                label: 'T3',
-                data: [1, 1, 1, 1, 1],
-                backgroundColor: (context: any) => {
-                    const i = context.dataIndex;
-                    return this.ColorChangeGroups[2].flag[i] === 0 ? 'transparent' : '#ffbb00'
-                },
-                borderWidth:0,
-                // yAxisID: 'y'
-                },
-                {
-                type: 'bar',
-                label: 'T4',
-                data: [1, 1, 1, 1, 1],
-                backgroundColor: (context: any) => {
-                    const i = context.dataIndex;
-                    return this.ColorChangeGroups[3].flag[i] === 0 ? 'transparent' : '#0011ff'
-                },
-                borderWidth:0,
-                // yAxisID: 'y'
-                },
-                {
-                type: 'bar',
-                label: 'T5',
-                data: [1, 1, 1, 1, 1],
-                backgroundColor: (context: any) => {
-                    const i = context.dataIndex;
-                    return this.ColorChangeGroups[4].flag[i] === 0 ? 'transparent' : '#a200ff'
-                },
-                borderWidth:0,
-                // yAxisID: 'y'
-                }
+        // this.ToolChangeData = {
+        //     labels: [0,15,30,45,60,75,90,105,120,135,150,165,180,195,210,225,240,255,270,285,300,315,330,345,360],
+        //     datasets: [
+        //         {
+        //         type: 'bar',
+        //         label: 'T1',
+        //         data: [1, 1, 1, 1, 1],
+        //         backgroundColor: (context: any) => {
+        //             const i = context.dataIndex;
+        //             return this.ColorChangeGroups[0].flag[i] === 0 ? 'transparent' : '#ff0000ff'
+        //         },
+        //         borderWidth:0,
+        //         // yAxisID: 'y'
+        //         },
+        //         {
+        //         type: 'bar',
+        //         label: 'T2',
+        //         data: [1, 1, 1, 1, 1],
+        //         backgroundColor: (context: any) => {
+        //             const i = context.dataIndex;
+        //             return this.ColorChangeGroups[1].flag[i] === 0 ? 'transparent' : '#81bb66'
+        //         },
+        //         borderWidth:0,
+        //         // yAxisID: 'y'
+        //         },
+        //         {
+        //         type: 'bar',
+        //         label: 'T3',
+        //         data: [1, 1, 1, 1, 1],
+        //         backgroundColor: (context: any) => {
+        //             const i = context.dataIndex;
+        //             return this.ColorChangeGroups[2].flag[i] === 0 ? 'transparent' : '#ffbb00'
+        //         },
+        //         borderWidth:0,
+        //         // yAxisID: 'y'
+        //         },
+        //         {
+        //         type: 'bar',
+        //         label: 'T4',
+        //         data: [1, 1, 1, 1, 1],
+        //         backgroundColor: (context: any) => {
+        //             const i = context.dataIndex;
+        //             return this.ColorChangeGroups[3].flag[i] === 0 ? 'transparent' : '#0011ff'
+        //         },
+        //         borderWidth:0,
+        //         // yAxisID: 'y'
+        //         },
+        //         {
+        //         type: 'bar',
+        //         label: 'T5',
+        //         data: [1, 1, 1, 1, 1],
+        //         backgroundColor: (context: any) => {
+        //             const i = context.dataIndex;
+        //             return this.ColorChangeGroups[4].flag[i] === 0 ? 'transparent' : '#a200ff'
+        //         },
+        //         borderWidth:0,
+        //         // yAxisID: 'y'
+        //         }
                 
-            ]
+        //     ]
 
-        };
-        this.ToolchangeOptions = {
-            maintainAspectRatio: false,
-                aspectRatio: 1.0,
-                responsive: true,
-                plugins: {
-                    title: {
-                        display: true,
-                        position: 'top',
-                        align: 'start',
-                        // text: this.ToolChartTitles[1],
-                        text: 'ライン単体 縦軸:ツール番号',
-                        font: {
-                            size:20
-                        }
-                    },
-                    legend: {
-                        display: true,
-                        position: 'right',
-                        labels: {
-                            color: textColor,
-                            font: {
-                                size:20
-                            },
-                            // 検証用
-                            generateLabels(chart: Chart): LegendItem[] {
-                                // 既定の凡例アイテムを生成
-                                const items = Chart.defaults.plugins.legend.labels.generateLabels(chart);
-                                // 各アイテムの見た目（色/線幅）を強制上書き
-                                items.forEach((item) => {
-                                    const text = item.text;
-                                    // 1) マップの定義に基づいて背景色などを上書き
-                                    const fillColor = legendColorMap_Tools[text];
-                                    if (fillColor) {
-                                    item.fillStyle = fillColor;     // 塗りはマップ定義を参照
-                                    item.lineWidth = 0;             // 線幅は非表示
-                                    return;
-                                    }
+        // };
+        // this.ToolchangeOptions = {
+        //     maintainAspectRatio: false,
+        //         aspectRatio: 1.0,
+        //         responsive: true,
+        //         plugins: {
+        //             title: {
+        //                 display: true,
+        //                 position: 'top',
+        //                 align: 'start',
+        //                 // text: this.ToolChartTitles[1],
+        //                 text: 'ライン単体 縦軸:ツール番号',
+        //                 font: {
+        //                     size:20
+        //                 }
+        //             },
+        //             legend: {
+        //                 display: true,
+        //                 position: 'right',
+        //                 labels: {
+        //                     color: textColor,
+        //                     font: {
+        //                         size:20
+        //                     },
+        //                     // 検証用
+        //                     generateLabels(chart: Chart): LegendItem[] {
+        //                         // 既定の凡例アイテムを生成
+        //                         const items = Chart.defaults.plugins.legend.labels.generateLabels(chart);
+        //                         // 各アイテムの見た目（色/線幅）を強制上書き
+        //                         items.forEach((item) => {
+        //                             const text = item.text;
+        //                             // 1) マップの定義に基づいて背景色などを上書き
+        //                             const fillColor = legendColorMap_Tools[text];
+        //                             if (fillColor) {
+        //                             item.fillStyle = fillColor;     // 塗りはマップ定義を参照
+        //                             item.lineWidth = 0;             // 線幅は非表示
+        //                             return;
+        //                             }
 
-                                });
+        //                         });
 
-                                return items;
-                            },
-                        // ここまで
-                        },
+        //                         return items;
+        //                     },
+        //                 // ここまで
+        //                 },
                         
-                    },
-                    midpointLabelPlugin: {
-                        labels: ['1','2','3','4','5'],
-                        format: 'range'
-                    }
+        //             },
+        //             midpointLabelPlugin: {
+        //                 labels: ['1','2','3','4','5'],
+        //                 format: 'range'
+        //             }
 
-                },
-                scales: {
-                    x: {
-                        stacked: true,
-                        offset: false,
-                        title:{
-                            display:true,
-                            text: '[分後]',
-                            font: {size:18},
-                            padding: {top:8,bottom: 0}
-                        },
-                        ticks: {
-                            font: {
-                                weight: 500,
-                                size: 20
-                            }
-                        },
-                        grid: {
-                            offset: false,
-                            lineWidth:(ctx: ScriptableScaleContext) => {
-                                if(typeof ctx.index === 'number' && ctx.index % 4 === 0){
-                                    return 2;
-                                } 
-                                return undefined;
-                            },
-                            color:(ctx: ScriptableScaleContext) => {
-                                if(ctx.index! % 4 === 0){
-                                    return 'rgba(255, 0, 0, 0.85)';
-                                }
-                                return undefined;
-                            }
-                        },
-                    },
-                    // Y軸の設定
-                    y: {
-                        type: 'linear',
-                        position: 'left',
-                        stacked: true,
-                        max: 5,
-                        title:{
-                            display:true,
-                            text: '[T]',
-                            font: {size:18},
-                            padding: {top:0,bottom: 8}
-                        },
-                        ticks: {
-                            display: false,
-                            color: textColorSecondary,
-                            beginAtZero: false,
-                            precision: 0,
-                            font: {
-                                size:20
-                            },
+        //         },
+        //         scales: {
+        //             x: {
+        //                 stacked: true,
+        //                 offset: false,
+        //                 title:{
+        //                     display:true,
+        //                     text: '[分後]',
+        //                     font: {size:18},
+        //                     padding: {top:8,bottom: 0}
+        //                 },
+        //                 ticks: {
+        //                     font: {
+        //                         weight: 500,
+        //                         size: 20
+        //                     }
+        //                 },
+        //                 grid: {
+        //                     offset: false,
+        //                     lineWidth:(ctx: ScriptableScaleContext) => {
+        //                         if(typeof ctx.index === 'number' && ctx.index % 4 === 0){
+        //                             return 2;
+        //                         } 
+        //                         return undefined;
+        //                     },
+        //                     color:(ctx: ScriptableScaleContext) => {
+        //                         if(ctx.index! % 4 === 0){
+        //                             return 'rgba(255, 0, 0, 0.85)';
+        //                         }
+        //                         return undefined;
+        //                     }
+        //                 },
+        //             },
+        //             // Y軸の設定
+        //             y: {
+        //                 type: 'linear',
+        //                 position: 'left',
+        //                 stacked: true,
+        //                 max: 5,
+        //                 title:{
+        //                     display:true,
+        //                     text: '[T]',
+        //                     font: {size:18},
+        //                     padding: {top:0,bottom: 8}
+        //                 },
+        //                 ticks: {
+        //                     display: false,
+        //                     color: textColorSecondary,
+        //                     beginAtZero: false,
+        //                     precision: 0,
+        //                     font: {
+        //                         size:20
+        //                     },
                             
-                        },
-                        grid: {
-                            color: surfaceBorder,
-                            drawBorder: false
-                        }
+        //                 },
+        //                 grid: {
+        //                     color: surfaceBorder,
+        //                     drawBorder: false
+        //                 }
 
-                    },
+        //             },
                     
-                }
-        };
+        //         }
+        // };
         // ここまで
 
         // 見え方検証用2(ライン別表示+交換本数でアイコン色変化)
@@ -807,7 +1211,13 @@ export class UtilitySchedulerComponent implements OnInit, OnDestroy {
         // ここまで
     }
 
-    // グラフタイトル   再代入
+    // 表示切替ボタンの状態に合わせて表示を再設定
+    ResetCharts() {
+        const type = this.toggleValue ? 1 : 0;  // 1:ライン別　0:グループ別
+        
+    }
+
+    // グラフタイトル再代入
     setTitle(idx: number, newTitle: string) {
         this.ToolChartTitles[idx] = newTitle;
         this.ToolChartGroups[idx].Options = {
@@ -832,7 +1242,7 @@ export class UtilitySchedulerComponent implements OnInit, OnDestroy {
         this.footerArray = [];
         // グラフデータ用の定数を宣言
         // 目盛数に合わせて変更(0～360分を15分刻み)
-        const BUCKETS = 26;
+        const BUCKETS = 25;
         const tools = Array.from({ length: 5 }, (_, i) => `T${i + 1}`);
         // Max3台分グラフデータを生成 ※選択されている行だけを対象にしつつ、idxを保持
         const tasks = [];
@@ -882,7 +1292,7 @@ export class UtilitySchedulerComponent implements OnInit, OnDestroy {
                         Number.isFinite(x.minutes) &&
                         x.minutes >= 0
                     );
-                    // console.table(rows);                    
+                    
                     const zeroBuckets = () => Array.from({ length: BUCKETS }, () => 0);
                     const toBucket = (m: number) => Math.min(Math.floor(m / 15), BUCKETS - 1);
                     const histByTool = new Map<string, number[]>();
@@ -930,14 +1340,14 @@ export class UtilitySchedulerComponent implements OnInit, OnDestroy {
                         if(idx === 1){
                             const values = Array(BUCKETS).fill(1);
                             this.ToolChangeData.datasets[dIdx].data = values;
-                            this.ColorChangeGroups[dIdx].flag = arr;
+                            // this.ColorChangeGroups[dIdx].flag = arr;
                         }
                         // ここまで
                     });
                     this.ToolChartGroups[idx].Data = {...this.ToolChartGroups[idx].Data};
                     this.ToolChangeData = {...this.ToolChangeData}
                 }
-                this.testFunction([...this.headerArray],[...this.footerArray]);
+                this.checkToolchangeTiming([...this.headerArray],[...this.footerArray]);
             },
             error: err =>{
                 console.error('集計エラー', err)
@@ -955,7 +1365,7 @@ export class UtilitySchedulerComponent implements OnInit, OnDestroy {
         this.footerArray = [];
         // グラフデータ用の定数を宣言
         // 目盛数に合わせて変更(0～360分を15分刻み)
-        const BUCKETS = 26;
+        const BUCKETS = 25;
         // Max3台分グラフデータを生成 ※選択されている行だけを対象にしつつ、idxを保持
         const tasks = [];
         for (let i = 0; i < this.lineGroups.length; i++){
@@ -1040,11 +1450,173 @@ export class UtilitySchedulerComponent implements OnInit, OnDestroy {
                     const values = Array(BUCKETS).fill(1);
                     this.ToolChangeData2.datasets[idx].data = values;
                     this.ToolChangeData2.datasets[idx].backgroundColor = toBackgroundColors(data);
-                    // console.log('index:',idx);
-                    // console.log('data:',data);
-
+                    
                 }
                 this.ToolChangeData2 = {...this.ToolChangeData2};
+            },
+            error: err =>{
+                console.error('集計エラー', err)
+            } 
+        });
+        
+    }
+    // ここまで
+
+    // 検証用
+    displayCharts_try(){
+        // UIに入力されているデータを格納
+        const factory = this.factoryNo | 0;
+        const group = this.lineGroups[0].value?.code
+        // 未選択の場合は何もせず戻る
+        if(group === undefined) return;
+        // 実行時のフラグをキャプチャーし、固定
+        const usePattern = this.usePattern1;
+        // 共通配列の初期化
+        this.headerArray = [];
+        this.footerArray = [];
+        // グラフデータ用の定数を宣言
+        const BUCKETS = 25;
+        const toBucket = (m: number) => Math.min(Math.floor(m / 15), BUCKETS - 1);
+        const zeroBuckets = () => Array.from({ length: BUCKETS }, () => 0);
+        const tools = Array.from({ length: 5 }, (_, i) => `T${i + 1}`);
+        const tasks: Array<Observable<HistogramResult>> = [];
+        
+        // ライン分グラフデータを生成 ※選択されている行だけを対象にしつつ、idxを保持
+        for (let i = 0; i < this.lineItems.length; i++){
+            const idx = i;
+            const headerValue = this.lineItems[idx].header;
+            const footerValue = this.lineItems[idx].footer;
+            // グラフエリアのタイトルにドロップダウンリストのnameを反映
+            const newtitle = this.lineItems[i].line_name;
+            // this.setTitle(i,newtitle);
+            // ヘッダー・フッターアドレスを同期で格納
+            this.headerArray[idx] = headerValue;
+            this.footerArray[idx] = footerValue;
+            // ツール別
+            if(usePattern){
+                // 刃具交換までの残り時間を取得
+                const task$ = this.schedulerService.getMinutesLeft(factory,headerValue,footerValue).pipe(
+                map((items: IToolprogerss[]) => {
+                    // rows整形（Tool/Minutes 抽出）
+                    const rows = items.map(x => ({
+                        tool: (x as any).tool_no ?? (x as any).tool,
+                        minutes: Number((x as any).minutes_left)
+                    }))
+                    .filter(r =>
+                        typeof r.tool === 'string' &&
+                        Number.isFinite(r.minutes) &&
+                        r.minutes >= 0
+                    );                
+                    // ツール別ヒストグラム
+                    const histByTool = new Map<string, number[]>();
+                    // Toolの本数分処理
+                    for (const t of tools) {
+                        const buckets = zeroBuckets();      // データがある場合も固定長で初期化してからカウント
+                        const mins = rows.filter(r => r.tool === t).map(r => r.minutes);    // 該当ツールの minutes 配列を取り出す
+                        for (const m of mins) {
+                            if (m < 0 || m > 360 || !Number.isFinite(m)){
+                                continue; // 念のため防御
+                            } 
+                            const bIdx = toBucket(m);
+                            buckets[bIdx] += 1;
+                        }
+                        histByTool.set(t, buckets);
+                    }
+
+                    return {idx, kind: 'tool' as const, histByTool};
+                }),
+                catchError(err => {
+                    console.error('集計エラー (idx=' + idx + ')', err);
+                    const empty = new Map<string,number[]>();   
+                    for (const t of tools) empty.set(t, Array(BUCKETS).fill(0));
+                    return of<HistogramResult>({ idx, kind: 'tool', histByTool: empty });
+                })
+            );
+            tasks.push(task$);
+
+            }
+            // ライン別
+            else{
+                
+                // 刃具交換までの残り時間を取得
+                const task$ = this.schedulerService.getMinutesLeft(factory,headerValue,footerValue).pipe(
+                map((items: IToolprogerss[]) => {
+                    // rows整形（Minutes 抽出）
+                    const rows = items.map(x => ({minutes: Number((x as any).minutes_left) }))
+                        .filter(r => Number.isFinite(r.minutes) && r.minutes >= 0);
+
+                    const mins = rows.map(r => r.minutes);    // 該当ラインの minutes 配列を取り出す
+                    const buckets = zeroBuckets();      // データがある場合も固定長で初期化してからカウント
+                    // ライン別ヒストグラム
+                    for (const m of mins) {
+                            if (m < 0 || m > 360 || !Number.isFinite(m)){
+                                continue; // 念のため防御
+                            } 
+                            const bIdx = toBucket(m);
+                            buckets[bIdx] += 1;
+                    }
+                    const histByLine = new Map<number, number[]>();
+                    histByLine.set(idx + 1, mins.length === 0 ? zeroBuckets() : buckets);
+                    return {idx, kind: 'line' as const, histByLine};
+                }),
+                catchError(err => {
+                    console.error('集計エラー (idx=' + idx + ')', err);
+                    const empty = new Map<number,number[]>();   
+                    // 必要に応じて empty.set(idx+1, Array(BUCKETS).fill(0));
+                    return of<HistogramResult>({ idx, kind: 'line', histByLine: empty });
+                })
+            );
+            tasks.push(task$);
+                
+            }
+            
+        }        
+        // API処理が全て完了後にまとめて処理
+        forkJoin(tasks).pipe(takeUntil(this.destroy$)).subscribe({
+            next: (results: HistogramResult[]) => {
+                // ライン別表示の場合
+                if(usePattern){
+                    for(const res of results){
+                        if(res.kind !== 'tool') continue;
+                        const { idx, histByTool } = res;
+                        tools.forEach((t, dIdx) => {
+                            const arr = histByTool.get(t) ?? Array(BUCKETS).fill(0);
+                            const old = this.ToolChartGroups2[idx].Data;
+                            this.ToolChartGroups2[idx].Data = {
+                                ...old,
+                                datasets: old.datasets.map((ds:any,j:number) => 
+                                    j === dIdx ? {...ds, data: [...arr] } : ds
+                                ),
+                            };
+                            
+                        });
+                        
+                    }
+
+                    this.checkToolchangeTiming([...this.headerArray],[...this.footerArray]);
+                
+                }
+                // 製品グループ別表示の場合
+                else{
+                    for (const res of results) {
+                        if (res.kind !== 'line') continue;
+                        const { idx, histByLine } = res;
+                        // Map に 1 エントリのみなので最初の value を使う（元コード準拠）
+                        const data: number[] = histByLine.values().next().value ?? Array(BUCKETS).fill(0);
+                        const values = Array(BUCKETS).fill(1);
+                        const old = this.ToolChartGroups2[idx].Data;
+                        this.ToolChartGroups2[idx].Data = {
+                            ...old,
+                            datasets: old.datasets.map((ds:any, j:number) => 
+                                j === 0 ? {...ds, data: [...values], backgroundColor: [toBackgroundColors(data)],} : ds
+                            ),
+                        };
+                        console.log('idx:',idx);
+                        console.table(data);
+                    }
+                    
+                }
+                
             },
             error: err =>{
                 console.error('集計エラー', err)

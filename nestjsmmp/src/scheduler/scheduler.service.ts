@@ -24,8 +24,8 @@ export class SchedulerService {
                  'm.footer_machine AS footer_machine'
         ])
         .where('m.factory_type = :factory', {factory});
-        const result = await query.getRawMany();
-        return result;
+        const results = await query.getRawMany();
+        return results;
     }
 
     // 該当ラインの末端機器番号を取得
@@ -55,39 +55,9 @@ export class SchedulerService {
         .andWhere('m.machine_no >= :header', {header})
         .andWhere('m.machine_no <= :footer', {footer})
         .andWhere('m.minutes_left <= 360');
-        const result = await query.getRawMany();
-        return result;
+        const results = await query.getRawMany();
+        return results;
     }
-
-    // 刃具交換までの時間が近い上位10件を取得
-    // async getTop10MinutesLeft(factory:number,headers:number[],footers:number[]){
-    //     if(headers.length === footers.length){
-    //         const query = await this.MachiningToolRepo
-    //         .createQueryBuilder('m')
-    //         .select(['m.minutes_left AS minutes_left',
-    //                 'm.machine_no AS machine_no',
-    //                 'm.tool_no AS tool_no'
-    //         ])
-    //         .where('m.factory_type = :factory',{factory})
-    //         .orderBy('m.minutes_left','ASC')
-    //         .take(10);
-    //         query.andWhere(
-    //             new Brackets((br) => {
-    //                 for(let i=0;i<headers.length;i++){
-    //                     const h = headers[i];
-    //                     const f = footers[i];
-    //                     br.orWhere(`m.machine_no BETWEEN :h${i} AND :f${i}`,
-    //                         {[`h${i}`]:h, [`f${i}`]:f,}
-    //                     );
-    //                 }
-                    
-    //             }),
-
-    //         );
-    //         return await query.getRawMany();
-    //     }
-        
-    // }
 
     // 刃具交換の近い設備10件の取得
     async getTop10MinutesLeft(factory:number,headers:number[],footers:number[]){
@@ -97,8 +67,8 @@ export class SchedulerService {
         const query = await this.MachiningToolRepo
             .createQueryBuilder('m')
             .select(['m.minutes_left AS minutes_left',
-                    'm.machine_no AS machine_no',
-                    'm.tool_no AS tool_no'
+                     'm.machine_no AS machine_no',
+                     'm.tool_no AS tool_no'
             ])
             .where('m.factory_type = :factory',{factory})
             .orderBy('m.minutes_left','ASC')
@@ -134,12 +104,12 @@ export class SchedulerService {
         return results;
     }
 
-
+    // 該当するライン名を取得
     async getMachineDataBetweenRange(factory:number,machine_no:number){
         const query = await this.PartsMachinesRepo
         .createQueryBuilder('m')
         .select(['m.parts_name AS parts_name',
-            'm.line_no AS line_no'
+                 'm.line_no AS line_no'
         ])
         .where('m.factory_type = :factory', {factory})
         .andWhere('m.header_machine <= :machine_no',{machine_no})
@@ -148,5 +118,39 @@ export class SchedulerService {
         return result;
 
     }
+
+    // 検証用コード記述エリア
+    // 該当工場内の製品をグループNoごとに取得
+    async getPartsGroupNo(factory:number){
+        const query = await this.PartsMachinesRepo
+        .createQueryBuilder('m')
+        .select(['m.parts_name AS parts_name',
+                 'm.line_no AS line_no',
+                 'm.group_no AS group_no'
+        ])
+        .where('m.factory_type = :factory', {factory})
+        .groupBy('m.group_no')
+        .orderBy('m.group_no');
+        const results =await query.getRawMany();
+        return results;
+        
+    }
+
+    // 工場区分とグループNoから該当するラインの先頭・末端設備アドレスを取得
+    async getHeaderToFooter(factory:number,group_no:number){
+        const query = await this.PartsMachinesRepo
+        .createQueryBuilder('m')
+        .select(['m.parts_name AS parts_name',
+                 'm.line_no AS line_no',
+                 'm.header_machine AS header_machine',
+                 'm.footer_machine AS footer_machine'
+        ])
+        .where('m.factory_type = :factory', {factory})
+        .andWhere('m.group_no = :group_no', {group_no})
+        .orderBy('m.group_no');
+        const results =await query.getRawMany();
+        return results;
+    }
+    // ここまで
 
 }

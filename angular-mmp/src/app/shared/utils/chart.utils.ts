@@ -1,15 +1,16 @@
-// 凡例関係
+// 刃具交換スケジューラー関連
+// 同時交換本数-対応色
 const STATE_COLORS: Record<number,string> = {
-  0: 'transparent',
-  1: '#81bb66',
-  2: '#a200ff',
-  3: '#0011fd',
-  4: '#ffbb00',
-  // 5:'#ff0000ff'
+  0: 'transparent', // 無色
+  1: '#2e9100',
+  2: '#73ff00',
+  3: '#f9fd00',
+  4: '#ffa600',
+  // 5:'#ff0000ff' 5本以上はFALL_BACK_FILLの色を呼び出し
 }
 
-const FALLBACK_FILL = '#ff0000ff';
-
+// 凡例関係
+// 刃具別カラーマップ
 export const legendColorMap_Tools: Record<string, string> = {
   T1: '#ff0000', // 赤
   T2: '#81bb66', // 緑
@@ -18,17 +19,41 @@ export const legendColorMap_Tools: Record<string, string> = {
   T5: '#a200ff', // 紫
 };
 
+// 同時交換本数カラーマップ
 export const legendColorMap_Counts: Record<string, string> = {
-  '1本': '#81bb66',
-  '2本': '#a200ff',
-  '3本': '#0011fd',
-  '4本': '#ffbb00',
+  '1本': '#2e9100',
+  '2本': '#73ff00',
+  '3本': '#f9fd00',
+  '4本': '#ffa600',
   '5本': '#ff0000ff'
 }
+
+const FALLBACK_FILL = '#ff0000ff';
 
 export function toBackgroundColors(values: number[]){
   return values.map(v => STATE_COLORS[v] ?? FALLBACK_FILL);
 }
+
+// ディープマージのユーティリティ（lodash なしの簡易版）
+export function deepMerge<T>(target: T, source: any): T {
+  if (source == null) return target;
+  const isObj = (v: any) => v && typeof v === 'object' && !Array.isArray(v);
+  const out: any = Array.isArray(target) ? [...(target as any)] : { ...(target as any) };
+  for (const k of Object.keys(source)) {
+    const sv = source[k];
+    const tv = (out as any)[k];
+    if (sv === undefined) {
+      // 明示的にキーを消したい場合は undefined を設定（Chart.js は undefined のキーは無視する）
+      out[k] = undefined;
+    } else if (isObj(sv) && isObj(tv)) {
+      out[k] = deepMerge(tv, sv);
+    } else {
+      out[k] = Array.isArray(sv) ? [...sv] : sv;
+    }
+  }
+  return out;
+}
+
 
 // 軸関係
 // グラフY軸の1000の単位をk表記にするフォーマッタ
@@ -39,4 +64,16 @@ export function formatK(n: number): string {
     return Number.isInteger(v) ? `${v}k` : `${v.toFixed(1)}k`;
   }
   return String(n);
+}
+
+// "残り時間(分)" を数値に正規化するヘルパー
+export function toNumber(val: unknown): number {
+if (val == null) return NaN;
+// 文字列の場合、全角数字→半角、カンマ除去、前後空白除去
+const s = String(val)
+    .replace(/[０-９]/g, d => String.fromCharCode(d.charCodeAt(0) - 0xFEE0))
+    .replace(/,/g, '')
+    .trim();
+const n = parseFloat(s);
+return Number.isFinite(n) ? n : NaN;
 }

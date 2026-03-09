@@ -7,27 +7,35 @@
             <div class="p-formgroup-inline flex flex-wrap gap-3 align-items-center">
                 <div class="flex align-items-center gap-2">
                     <div class="font-semibold text-2xl">設備1</div>
-                    <p-dropdown [(ngModel)]="lineGroups[0].value" [options]="lineGroups[0].values" optionLabel="name" placeholder="Select"/>
+                    <p-dropdown [(ngModel)]="lineGroups[0].value" [options]="lineGroups[0].values" optionLabel="name" placeholder="Select"
+                    (onChange)="onDropdownChange()" />
                 </div>
-                <div class="flex align-items-center gap-2">
+                <!-- <div class="flex align-items-center gap-2">
                     <div class="font-semibold text-2xl">設備2</div>
                     <p-dropdown [(ngModel)]="lineGroups[1].value" [options]="lineGroups[1].values" optionLabel="name" placeholder="Select"/>
-                </div>
-                <div class="flex align-items-center gap-2">
+                </div> -->
+                <!-- <div class="flex align-items-center gap-2">
                     <div class="font-semibold text-2xl">設備3</div>
                     <p-dropdown [(ngModel)]="lineGroups[2].value" [options]="lineGroups[2].values" optionLabel="name" placeholder="Select"/>
+                </div> -->
+                <div class="flex align-items-center gap-2">
+                    <div class="font-semibold text-2xl">表示切替</div>
+                    <div class="scheduler-toggle">
+                        <p-togglebutton [(ngModel)]="toggleValue" [disabled]="toggleDisabled" onLabel="ライン別" offLabel="グループ別" [style]="{ width: '20em' }"
+                        (onChange)="onToggleChange()" />
+                    </div>
                 </div>
                 <div class="flex align-items-center gap-20">
                     <p-button label="更新" (onClick)="displayCharts()"></p-button>
                     <!-- <p-button label="更新" (onClick)="displayChart_SumLines()"></p-button> -->
                 </div>
                 <div class="flex align-items-center gap-20">
-                    <p-button label="テスト" (onClick)="displayChart_SumLines()"></p-button>
-                    <!-- <p-button label="テスト" (onClick)="initCharts()"></p-button> -->
+                    <!-- <p-button label="テスト" (onClick)="displayChart_SumLines()"></p-button> -->
+                    <p-button label="テスト" (onClick)="displayCharts_try()"></p-button>
                 </div>
                 <div class="flex align-items-center gap-2">
                     <div class="font-semibold text-2xl">自動更新（60秒ごと）</div>
-                    <div class="checkbix-row">
+                    <div class="checkbox-row">
                         <p-checkbox inputId="autoRefresh" [binary]="true" [(ngModel)]="checked" styleClass="cb-scale" 
                         (onChange)="onToggle($event.checked)"></p-checkbox>
                     </div>
@@ -40,23 +48,23 @@
     </div>
     <!-- 表示部分　グラフ・データテーブル -->
     <div class="col-span-12 xl:col-span-12">
-        <div class="card flex flex-col gap-6 w-full">
+        <div class="card flex flex-col gap-6 w-full" style="min-height: 0; overflow: auto;">
             <!-- 行全体の高さをここで設定 -->
             <div class="flex flex-col md:flex-row gap-6">
-                <!-- 左側:Chart(画面の2/3) -->
-                <div class="flex flex-wrap gap-2 w-full md:basis-2/3">
-                    <div class=" gap-2 w-full">
-                        <p-chart type="bar" [data]="ToolChartGroups[0].Data" [options]="ToolChartGroups[0].Options" style="height: 550px;"></p-chart>
-                    </div>
-                    <div class=" gap-2 w-full">
-                        <p-chart type="bar" [data]="ToolChangeData" [options]="ToolchangeOptions" [plugins]="[midpointLabelPlugin]" style="height: 550px;"></p-chart>
-                    </div>
-                    <div class=" gap-2 w-full">
-                        <p-chart type="bar" [data]="ToolChangeData2" [options]="ToolchangeOptions2" [plugins]="[midpointLabelPlugin]" style="height: 550px;"></p-chart>
+                <!-- 左側:Chart(画面の2/3) *ngforを使用してパターンに合わせてグラフの数を変更-->
+                <div class="flex flex-wrap gap-2 w-full md:basis-2/3" style="min-height: 0;">
+                    <div class="schedule-chart" style="min-width: 0; width: 100%;">
+                    <ng-container *ngFor="let group of ToolChartGroups2; let i = index; trackBy: trackByIndex">
+                        <div class=" gap-2 w-full" style="min-height: 0;" [ngStyle]="{height: (ToolChartGroups2?.length === 1 ? chartHeight + 'px' : null)}">
+                            <p-chart type="bar" [data]="group.Data" [options]="group.Options" [height]="chartHeight + 'px'"
+                                     [style.height.px]="chartHeight">
+                            </p-chart>
+                        </div>
+                    </ng-container>
                     </div>
                 </div>
                 <!-- 右側:Table(画面の1/3) -->
-                <div class="flex flex-wrap gap-2 w-full md:basis-1/3">
+                <div class="flex flex-wrap gap-2 w-full md:basis-1/3" style="min-height: 0;">
                     <div class="w-full">
                         <div class="font-semibold text-2xl mb-2">残り時間予測</div>
                         <div class="schedule-page-table">           
@@ -143,5 +151,17 @@
         <!-- </div>
     </div> -->
     <!-- ここまで -->
+     <!-- 左側:Chart(画面の2/3) -->
+                <!-- <div class="flex flex-wrap gap-2 w-full md:basis-2/3">
+                    <div class=" gap-2 w-full">
+                        <p-chart type="bar" [data]="ToolChartGroups[0].Data" [options]="ToolChartGroups[0].Options" style="height: 550px;"></p-chart>
+                    </div>
+                    <div class=" gap-2 w-full">
+                        <p-chart type="bar" [data]="ToolChartGroups[1].Data" [options]="ToolChartGroups[1].Options" style="height: 550px;"></p-chart>
+                    </div>
+                    <div class=" gap-2 w-full">
+                        <p-chart type="bar" [data]="ToolChartGroups[2].Data" [options]="ToolChartGroups[2].Options" style="height: 550px;"></p-chart>
+                    </div>
+                </div> -->
     
 </p-fluid>

@@ -44,4 +44,23 @@ export class SchedulerService {
 
   }
 
+  // 検証用コード記述エリア
+
+  getPartsGroupNo(factory:number): Observable<any>{
+    const url = `${this.apiURL}/scheduler/group?factory=${factory}`;
+        return this.http.get<any>(url).pipe(
+            map((res) => res as any)
+        );
+
+  }
+
+  getHeaderToFooter(factory:number,group:number): Observable<any>{
+    const url = `${this.apiURL}/scheduler/device?factory=${factory}&group=${group}`;
+        return this.http.get<any>(url).pipe(
+            map((res) => res as any)
+        );
+
+  }
+
+  // ここまで
 }

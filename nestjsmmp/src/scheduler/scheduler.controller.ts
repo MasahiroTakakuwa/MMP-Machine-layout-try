@@ -24,4 +24,18 @@ export class SchedulerController{
         return this.SchedulerService.getTop10MinutesLeft(factory,headers,footers)
     }
 
+    // 検証用コード記述エリア
+    // 品番ごとのグループNo(担当者持ち台数)を取得
+    @Get('group')
+    getgroupList(@Query('factory') factory:number){
+        return this.SchedulerService.getPartsGroupNo(factory)
+    }
+
+    // グループNoに該当するラインのデータを取得
+    @Get('device')
+    getDeviceAddress(@Query('factory') factory:number, @Query('group') group:number){
+        return this.SchedulerService.getHeaderToFooter(factory,group)
+    }
+    // ここまで
+
 }
