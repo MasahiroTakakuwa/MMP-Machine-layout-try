@@ -46,7 +46,7 @@ export const appRoutes: Routes = [
             { path: 'plan', component: PlanComponent},
             { path: 'kpi', component: KpiComponent},
             // 共用ページに対応するルート定義を追加。
-            { path: 'kpi/:factory', component: UtilityKpiComponent},
+            { path: 'kpi/:factory/:type', component: UtilityKpiComponent},
             { path: 'scheduler/:factory', component: UtilitySchedulerComponent}
             // { path: 'test', component: Test},
             // { path: 'test2', component: Test2},

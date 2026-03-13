@@ -4,94 +4,99 @@
     <div class="col-span-12 xl:col-span-12">
         <div class="card">
             <div class="p-formgroup-inline flex flex-wrap gap-3 align-items-center">
-                
-                <div class="flex align-items-center gap-2">
-                    <div class="font-semibold text-2xl">加工切替</div>
-                    <p-togglebutton [(ngModel)]="toggleValue" [disabled]="toggleDisabled" onLabel="切削" offLabel="鍛造" [style]="{ width: '10em' }"
-                    (onChange)="onToggleChange()" />
-                </div>
-                
-                <div class="flex align-items-center gap-2">
-                    <div class="font-semibold text-2xl">品番</div>
-                    <!-- <p-dropdown [(ngModel)]="partslistValue" [options]="partslistValues" optionLabel="name" placeholder="Select"
-                    (onChange)="onPartsNoSelect()"/> -->
-                    <p-dropdown [(ngModel)]="partslistValue" [options]="partslistValues"
-                                [filter]="true" [filterBy]="'name,code'"
-                                 placeholder="Select" [showClear]="true"
-                    (onChange)="onPartsNoSelect()">
-                    
-                    <!-- 候補の行（ドロップダウン内） -->
-                    <ng-template let-item pTemplate="item">
-                    <div class="flex align-items-center gap-2">
-                        <span class="font-medium">{{ item.name }}</span>
-                        <span class="text-500">({{ item.code }})</span>
+                <div class="flex align-items-center gap-10">
+                    <div class="flex align-items-center gap-4">
+                        <div class="font-semibold text-2xl">品番</div>
+                        <p-dropdown [(ngModel)]="partslistValue" [options]="partslistValues"
+                                    optionLabel="code" placeholder="Select" 
+                                    (onChange)="onPartsNoSelect()"/>
                     </div>
-                    </ng-template>
+                    <div class="flex align-items-center gap-4">
+                        <div class="font-semibold text-2xl">品名</div>
+                        <p-dropdown [(ngModel)]="partslistValue" [options]="partslistValues"
+                                    optionLabel="name" placeholder="Select"
+                                    (onChange)="onPartsNameSelect()"/>
+                    </div>
 
-                    <!-- 選択後にボックス内へ表示する内容 -->
-                    <ng-template let-item pTemplate="selectedItem">
-                    <span *ngIf="item; else placeholderTpl">
-                        {{ item.name }} ({{ item.code }})
-                    </span>
-                    </ng-template>
-
-                    <!-- 未選択時の表示（任意） -->
-                    <ng-template #placeholderTpl>
-                    <span class="text-500">{{ 'Select' }}</span>
-                    </ng-template>
-                    </p-dropdown>
-                </div>
-                <div class="flex align-items-center gap-2">
-                    <div class="font-semibold text-2xl">設備</div>
-                    <p-dropdown [(ngModel)]="machinelistValue" [options]="machinelistValues" optionLabel="name" placeholder="Select"/>
-                </div>
-                <div class="flex align-items-center gap-2">
+                    <div class="flex align-items-center gap-4">
+                        <div class="font-semibold text-2xl">設備</div>
+                        <p-dropdown [(ngModel)]="machinelistValue" [options]="machinelistValues" optionLabel="name" placeholder="Select"/>
+                    </div>
                     <div class="font-semibold text-2xl">計画更新:{{updated_plan | date:'yyyy/MM/dd'}}</div>
-                </div>
-                <div class="flex align-items-center gap-2">
+ 
                     <div class="font-semibold text-2xl">最新生産:{{updated_prod | date:'yyyy/MM/dd'}}</div>
-                </div>
-                <!-- 判定（〇=青 / ✖=赤） -->
-                <!-- 差分（判定と同じ色） -->
-                <div class="flex align-items-center gap-20">
+                
                     <p-button label="更新" (onClick)="displayCharts()"></p-button>
-                    
-                    <!-- <div class="font-semibold text-4xl judge"
-                        [class.ok]="judge === '〇'"
-                        [class.ng]="judge === '✖'">
-                        生産進捗：{{ judge || '-' }}
-                    </div>
-            
-                    <div class="font-semibold text-4xl delta"
-                        [class.ok]="judge === '〇'"
-                        [class.ng]="judge === '✖'">
-                        計画比：{{ (delta != null ? (delta | number:'1.0-0') : '-') }}
-                    </div> -->
                     
                 </div>
            </div>
         </div>
     </div>
-            
+    <!-- グラフエリア -->
     <div class="col-span-12 xl:col-span-12">
-        <div class="card">
-            
-            <div class="font-semibold text-2xl mb-2">生産実績[個]</div>
-            <p-chart type="bar" [data]="ProdChartData" [options]="ProdChartOptions" style="height: 550px;"></p-chart>
+        <div class="card flex flex-col gap-6 w-full" style="min-height: 0; overflow: auto;">
+            <!-- 行全体の高さをここで設定 -->
+            <div class="flex flex-col md:flex-row gap-6">
+                <div class="flex flex-wrap gap-2 w-full" style="min-height: 0;">
+                    <div class="kpi-chart" style="min-width: 0; width: 100%;">
+                        <!-- 下揃えにし、横並びに設定 -->
+                        <div class="flex items-end justify-between mb-2">
+                            <!-- 左側：生産実績 -->
+                            <div class="font-semibold text-2xl">
+                                生産実績 [個]
+                            </div>
+                            <!-- 右側：生産進捗 / 計画比（右寄せ & 下揃え） -->
+                            <div class="flex gap-4 items-end">
+                                <!-- 生産進捗 -->
+                                <!-- 判定（〇=青 / ✖=赤 差分（判定と同じ色） -->
+                                <div class="font-semibold text-4xl judge text-right"
+                                    [class.ok]="judge === '〇'"
+                                    [class.ng]="judge === '✖'">
+                                    生産進捗：{{ judge || '-' }}
+                                </div>
+                                <!-- 計画比 -->
+                                <div class="font-semibold text-4xl delta text-right"
+                                    [class.ok]="judge === '〇'"
+                                    [class.ng]="judge === '✖'">
+                                    計画比：{{ delta || '-' }}
+                                </div>
+                            </div>
+                        </div>
+                        <p-chart type="bar" [data]="ProdChartData" [options]="ProdChartOptions" [height]="chartHeight+'px'" [style.height.px]="chartHeight"></p-chart>
+                        
+                        <div class="font-semibold text-2xl mb-2">稼働率 [%]</div>
+                        <p-chart type="bar" [data]="OperatingRateData" [options]="OperatingRateOptions" [height]="chartHeight+'px'" [style.height.px]="chartHeight"></p-chart>
+                        
+                        <div class="font-semibold text-2xl mb-2">不良率 [%]</div>
+                        <p-chart type="bar" [data]="DefectRateData" [options]="DefectRateOptions" [height]="chartHeight+'px'" [style.height.px]="chartHeight"></p-chart>
+                    </div>
+                </div>
+            </div>
         </div>
     </div>
-
-    <div class="col-span-12 xl:col-span-12">
-        <div class="card">        
-            <div class="font-semibold text-2xl mb-2">稼働率[%]</div>
-            <p-chart type="bar" [data]="OperatingRateData" [options]="OperatingRateOptions" style="height: 550px;"></p-chart>
-        </div>
-    </div>
-
-    <div class="col-span-12 xl:col-span-12">
-        <div class="card">        
-            <div class="font-semibold text-2xl mb-2">不良率[%]</div>
-            <p-chart type="bar" [data]="DefectRateData" [options]="DefectRateOptions" style="height: 550px;"></p-chart>
-        </div>
-    </div>
+    <!-- ここまで -->
 </p-fluid>
+
+<!-- <div class="col-span-12 xl:col-span-12">
+        <div class="card">
+            <div class="font-semibold text-2xl mb-2">生産実績 [個]</div>
+            <p-chart type="bar" [data]="ProdChartData" [options]="ProdChartOptions" style="height: 300px;"></p-chart>
+        </div>
+    </div>
+
+    <div class="col-span-12 xl:col-span-12">
+        <div class="card">        
+            <div class="font-semibold text-2xl mb-2">稼働率 [%]</div>
+            <p-chart type="bar" [data]="OperatingRateData" [options]="OperatingRateOptions" style="height: 300px;"></p-chart>
+        </div>
+    </div>
+
+    <div class="col-span-12 xl:col-span-12">
+        <div class="card">        
+            <div class="font-semibold text-2xl mb-2">不良率 [%]</div>
+            <p-chart type="bar" [data]="DefectRateData" [options]="DefectRateOptions" style="height: 300px;"></p-chart>
+        </div>
+    </div> -->
+
+
+    

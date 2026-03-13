@@ -58,3 +58,8 @@ $ng-color:   #dc2626; // 赤（Tailwindのred-600相当)
     font-variant-numeric: tabular-nums;
    }
   }
+
+  .kpi-chart {
+  .p-chart { display: block; width: 100%; }
+  .p-chart > canvas { height: 100% !important; width: 100% !important; }
+}

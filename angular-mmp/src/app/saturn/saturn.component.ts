@@ -95,19 +95,19 @@ export class SaturnComponent implements OnInit, OnDestroy {
     sumCount: number = this.lineCount+this.runningCount+this.stoppingCount+this.abnormalstop+this.planningstop;
 
     // p-tableの初期設定
-    columns = [{ field: 'name', StyleClass:'center-text' }];
+    columns = [{ field: 'name' }];
     items = [
-    { name: '稼働(目標以上)' },
+    { name: '稼働\n(目標以上)' },
     { name: this.targetOver },
-    { name: '稼働(目標未満' },
+    { name: '稼働\n(目標未満)' },
     { name: this.runningCount },
     { name: '停止' },
     { name: this.stoppingCount },
-    { name: '4h以上停止'},
+    { name: '4h以上\n停止'},
     { name: this.abnormalstop },
     { name: '計画停止' },
     { name: this.planningstop },
-    { name: 'ライン合計'},
+    { name: 'ライン\n合計'},
     { name: this.sumCount }
     ];
 

@@ -130,6 +130,10 @@
   text-align: center;
 }
 
+.pre-line {
+  white-space: pre-line;
+}
+
 :host {
   .saturn-page-table {
     ::ng-deep .p-datatable-thead > tr > th,

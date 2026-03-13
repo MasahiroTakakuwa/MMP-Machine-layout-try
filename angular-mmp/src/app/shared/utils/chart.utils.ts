@@ -1,35 +1,36 @@
-// 刃具交換スケジューラー関連
-// 同時交換本数-対応色
+// 刃具交換スケジューラー
+// 凡例
+// 同時交換本数-対応色カラーマップ
 const STATE_COLORS: Record<number,string> = {
   0: 'transparent', // 無色
-  1: '#2e9100',
-  2: '#73ff00',
+  1: '#51ff00',
+  2: '#4dac00',
   3: '#f9fd00',
   4: '#ffa600',
   // 5:'#ff0000ff' 5本以上はFALL_BACK_FILLの色を呼び出し
 }
 
-// 凡例関係
 // 刃具別カラーマップ
 export const legendColorMap_Tools: Record<string, string> = {
-  T1: '#ff0000', // 赤
-  T2: '#81bb66', // 緑
-  T3: '#ffbb00', // 黄
-  T4: '#0011ff', // 青
   T5: '#a200ff', // 紫
+  T4: '#0011ff', // 青
+  T3: '#ffbb00', // 黄
+  T2: '#81bb66', // 緑
+  T1: '#ff0000', // 赤
+
 };
 
 // 同時交換本数カラーマップ
 export const legendColorMap_Counts: Record<string, string> = {
-  '1本': '#2e9100',
-  '2本': '#73ff00',
+  '1本': '#51ff00',
+  '2本': '#4dac00',
   '3本': '#f9fd00',
   '4本': '#ffa600',
   '5本': '#ff0000ff'
 }
 
 const FALLBACK_FILL = '#ff0000ff';
-
+// 背景色反映
 export function toBackgroundColors(values: number[]){
   return values.map(v => STATE_COLORS[v] ?? FALLBACK_FILL);
 }
@@ -54,7 +55,6 @@ export function deepMerge<T>(target: T, source: any): T {
   return out;
 }
 
-
 // 軸関係
 // グラフY軸の1000の単位をk表記にするフォーマッタ
 export function formatK(n: number): string {
@@ -77,3 +77,4 @@ const s = String(val)
 const n = parseFloat(s);
 return Number.isFinite(n) ? n : NaN;
 }
+

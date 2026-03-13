@@ -45,6 +45,7 @@ export interface Grouplist{
 
 export interface LineItems{
     line_name: string,
+    line_no: number,
     header: number,
     footer: number
 }

@@ -12,10 +12,10 @@ export interface Dropdownitem {
     name: string;
     code: string;
 }
-export interface Dropdownitem2 {
-    name: string;
-    code: string;
-}
+// export interface Dropdownitem2 {
+//     name: string;
+//     code: string;
+// }
 export interface Kpi {
     factory_type: number;
     parts_no: string;

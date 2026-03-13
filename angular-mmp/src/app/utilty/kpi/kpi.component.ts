@@ -19,8 +19,9 @@ import { KpiService } from "../../services/kpi.service";
 
 import { getFirstDayOfCurrentMonthInJST, getWeekendDaysOfCurrentMonth } from "../../shared/utils";
 import { averageNonZero1D, addArrays, addManyArrays } from "../../shared/utils";
+import { formatK } from "../../shared/utils";
 
-import { FactoryOption,Dropdownitem,Dropdownitem2,Kpi,PartsList,LastUpdatedPlan, LastUpdatedProd } from "../../interface/ui";
+import { FactoryOption,Dropdownitem,Kpi,PartsList,LastUpdatedPlan, LastUpdatedProd } from "../../interface/ui";
 import { ForgingPlanItem,ForgingProgItem,ForgingResponse } from "../../interface/forging";
 import { MachiningPlanItem,MachiningProgItem,MachiningBaseCTItem,MachiningResponse } from "../../interface/machining";
 
@@ -31,15 +32,36 @@ import Chart, {
 }
  from 'chart.js/auto';
 
-// --- (1) プラグインのオプション型を定義 ---
-export interface LegendLikeTextOptions {
+//拡張後のプラグインのオプション型を定義 
+type LegendLikeTextAlign = 'left' | 'right';
+type LegendLikeTextPosition = 'top' | 'bottom';
+
+interface LegendLikeTextOptions {
+  /** 表示する行（上からの順） */
   lines?: string[];
-  align?: 'left' | 'right';
-  position?: 'top' | 'bottom';
+  /** 文字色 */
   color?: string;
-  font?: { size?: number; weight?: string };
+  /** フォント */
+  font?: {
+    size?: number;
+    weight?: string; // 'normal' | 'bold' など
+    family?: string; // 追加: 任意フォント（デフォルトは sans-serif）
+  };
+  /** 行間（px）。未指定なら size+4 */
+  lineHeight?: number;
+  /** 右寄せ/左寄せ（textAlign に反映） */
+  align?: LegendLikeTextAlign;
+  /** 上側/下側（textBaseline の初期値と積み上げ方向に影響） */
+  position?: LegendLikeTextPosition;
+  /** 余白（従来の外側配置に使う） */
   margin?: number;
+
+  /** ★ 追加: 座標指定（キャンバスの左上原点、px） */
+  x?: number;
+  y?: number;
 }
+
+// ここまで
 
 // --- (2) Chart.js へプラグインオプションを「認識」させる（モジュール拡張） ---
 declare module 'chart.js' {
@@ -53,57 +75,66 @@ declare module 'chart.js' {
 // --- (3) カスタムプラグイン本体（型付き） ---
 const LegendLikeTextPlugin: Plugin<ChartType> = {
   id: 'legendLikeText',
-  // afterLayout/afterDraw/afterRender など好みで
-  afterDraw(chart: ChartJS, args: unknown, opts?: LegendLikeTextOptions) {
-    // console.log('LegendLikeTextPlugin fired');
+  // afterDraw/afterDatasetsDraw/afterRender など好みでOK。ここでは afterDraw。
+  afterDraw(chart: ChartJS, _args: unknown, opts?: LegendLikeTextOptions) {
     const { ctx, chartArea, width } = chart;
     if (!ctx || !chartArea) return;
     if (!opts?.lines || opts.lines.length === 0) return;
 
-    const lines = opts?.lines ?? ['注記: サンプル'];
-    const color = opts?.color ?? '#333';
-    const size = opts?.font?.size ?? 12;
-    const weight = opts?.font?.weight ?? 'normal';
-    const margin = opts?.margin ?? 6;
-    const align = opts?.align ?? 'right';
-    const position = opts?.position ?? 'top';
+    // === Options（デフォルト） ===
+    const lines = opts.lines ?? ['注記: サンプル'];
+    const color = opts.color ?? '#333';
+    const size = opts.font?.size ?? 12;
+    const weight = opts.font?.weight ?? 'normal';
+    const family = opts.font?.family ?? 'sans-serif';
+    const margin = opts.margin ?? 6;
+    const align = opts.align ?? 'right';     // 'left' | 'right'
+    const position = opts.position ?? 'top'; // 'top' | 'bottom'
+    const lineHeight = opts.lineHeight ?? size + 4;
 
-    // 外側の座標（キャンバス端基準）
-    // const x = align === 'right' ? width - margin : chartArea.left + margin;
-    // const yBase = position === 'top' ? chartArea.top - margin : chartArea.bottom + margin;
-
-    const x = chartArea.right - 8;
-    const yBase = chartArea.top + 28;
+    // === 描画前準備 ===
     ctx.save();
     ctx.fillStyle = color;
     ctx.textAlign = align === 'right' ? 'right' : 'left';
     ctx.textBaseline = position === 'top' ? 'bottom' : 'top';
-    ctx.font = `${weight} ${size}px sans-serif`;
+    ctx.font = `${weight} ${size}px ${family}`;
 
-    const lineHeight = size + 4;
+    // === 基準座標の決定 ===
+    // 1) opts.x/opts.y が与えられていれば、その座標を使用（キャンバス座標）
+    // 2) 未指定なら、従来の外側配置ロジックで近い位置に置く
+    //    - align = 'right' の場合は右端
+    //    - position = 'top' の場合は上側
+    let baseX: number;
+    let baseY: number;
+
+    if (typeof opts.x === 'number' && typeof opts.y === 'number') {
+      baseX = opts.x;
+      baseY = opts.y;
+    } else {
+      // 旧動作に近い配置（凡例風：右上外側寄り）
+      baseX = align === 'right' ? (width - margin) : (chartArea.left + margin);
+      baseY = position === 'top' ? (chartArea.top - margin) : (chartArea.bottom + margin);
+    }
+
+    // === 行の描画 ===
+    // position='top' の場合：基準Yから上に積む（textBaseline='bottom'）
+    // position='bottom' の場合：基準Yから下に積む（textBaseline='top'）
     lines.forEach((text, idx) => {
       const y =
         position === 'top'
-          ? yBase - (lines.length - 1 - idx) * lineHeight
-          : yBase + idx * lineHeight;
-      ctx.fillText(text, x, y);
+          ? baseY - (lines.length - 1 - idx) * lineHeight
+          : baseY + idx * lineHeight;
+      ctx.fillText(text, baseX, y);
     });
+
     ctx.restore();
   },
 };
 
+// ここまで
+
 // （A）グローバル登録で使う場合
 Chart.register(LegendLikeTextPlugin);
-
-// グラフY軸の1000の単位をk表記にするフォーマッタ
-function formatK(n: number): string {
-  if (Math.abs(n) >= 1000) {
-    // 小数を丸めたい場合は toFixed(1) などに変更
-    const v = n / 1000;
-    return Number.isInteger(v) ? `${v}k` : `${v.toFixed(1)}k`;
-  }
-  return String(n);
-}
 
 @Component({
     selector: 'app-utility-kpi',
@@ -122,6 +153,7 @@ export class UtilityKpiComponent implements OnInit,OnDestroy{
     private destroy$ = new Subject<void>();
 
     factory = '';
+    type = '';
     subscription: Subscription;
     constructor(
         private route: ActivatedRoute,
@@ -132,13 +164,14 @@ export class UtilityKpiComponent implements OnInit,OnDestroy{
         // ページのルートパラメータが変わるたびに更新する様に設定。
         this.route.paramMap.subscribe(params => {
         this.factory = params.get('factory') ?? '';
+        this.type = params.get('type') ?? '';
         });
         this.subscription = this.layoutService.configUpdate$.pipe(debounceTime(25)).subscribe(() => {
             
         });
     }
 
-    // ルーターパラメータ(工場名)と工場区分の紐づけ
+    // ルートパラメータ(工場名)と工場区分の紐づけ
     factoryNo: number = 0;
     factoryCode: FactoryOption[] = [
     { name: 'jupiter', code: 1 },
@@ -147,16 +180,19 @@ export class UtilityKpiComponent implements OnInit,OnDestroy{
     { name: 'tierra2', code: 6 },
     { name: 'saturn',  code: 5 }
     ];
-    
+
+    // 加工方法(切削・鍛造)のルートパラメータの格納先を宣言(number)
+    typeNum: number = 0;
+
     // 加工
-    toggleValue: boolean = true;            // true:切削・false:鍛造
-    toggleDisabled: boolean = false;        // ボタン動作の許可(STN以外はどちらかのみのため不許可)
+    // toggleValue: boolean = true;            // true:切削・false:鍛造
+    // toggleDisabled: boolean = false;        // ボタン動作の許可(STN以外はどちらかのみのため不許可)
     // 品番
     partslistValues:  Dropdownitem[] = [];
     partslistValue: Dropdownitem | null = null;
     // ラインNo・設備名
-    machinelistValues: Dropdownitem2[] = [];
-    machinelistValue: Dropdownitem2 | null = null;
+    machinelistValues: Dropdownitem[] = [];
+    machinelistValue: Dropdownitem | null = null;
     // 鍛造生産計画・進捗データ格納
     formarplans: ForgingPlanItem[] = [];
     formarprogs: ForgingProgItem[] = [];
@@ -167,12 +203,13 @@ export class UtilityKpiComponent implements OnInit,OnDestroy{
     weekendDays: number[] = [];     // 休日の日付を格納用
     // 生産勝ち負け表示
     judge: string = '〇';       // 生産進捗
-    delta: number = 0;          // 差分
+    delta: string = '0';          // 差分
     // アップデート日時
     updated_plan: Date = new Date;
     updated_prod: Date = new Date;
 
     // Chartの初期設定
+    chartHeight = 280;
     // Chartの横軸ラベル
     labels_day: string[] = ['1','2','3','4','5','6','7','8','9','10',
                             '11','12','13','14','15','16','17','18','19','20',
@@ -196,9 +233,10 @@ export class UtilityKpiComponent implements OnInit,OnDestroy{
     ngOnInit(){
         this.route.paramMap.subscribe(params => {
             const name = params.get('factory');
+            const type = params.get('type');
             this.factoryNo = this.factoryCode.find(x => x.name === name)?.code ?? 0;
-            this.loadDropdownItems(this.factoryNo);
-            this.updateToggleState(this.factoryNo);
+            this.typeNum = Number(type);
+            this.loadDropdownItems(this.factoryNo,this.typeNum);
             this.initCharts();
             this.loadLastupdated();
             
@@ -219,12 +257,11 @@ export class UtilityKpiComponent implements OnInit,OnDestroy{
 
     // UI表示関連
     // 品番リスト読み込み
-    loadDropdownItems(factoryCode: number) {
+    loadDropdownItems(factoryCode: number,typeNumber: number) {
         // 固定項目として全品番を宣言
         const fixedItem = {name: '全品番', code: 'all'}
-        const type = this.toggleValue ? 1 : 0;              // 加工方法 1:切削　0:鍛造
-        // 加工方法で分岐
-        if(type == 1){
+        // 加工方法で分岐 1:切削　0:鍛造
+        if(typeNumber == 1){
             this.kpiService.getPartslist(factoryCode).subscribe((items: PartsList[]) =>
             {
                 const dynamicItems = items.map(item => ({
@@ -232,11 +269,11 @@ export class UtilityKpiComponent implements OnInit,OnDestroy{
                     code: item.parts_no
                 }));
                 this.partslistValues = [fixedItem, ...dynamicItems];
-                                
+                console.table(this.partslistValues);
             });
 
         }
-        else if(type == 0){
+        else if(typeNumber == 0){
             this.partslistValues = [fixedItem];
 
         }
@@ -246,9 +283,7 @@ export class UtilityKpiComponent implements OnInit,OnDestroy{
     }
 
     // 設備リスト読み込み
-    loadDropdownItems2(factoryCode: number, partsCode: string) {
-        // ここでは 0/1 に統一（例：1=切削, 0=鍛造）
-        const type = this.toggleValue ? 1 : 0;
+    loadMachineListItems(factoryCode: number, partsCode: string) {
         type OptionItem = {name:string;code:string};
         // 呼び出し前ガード
         if (!this.partslistValue || this.partslistValue.code === undefined) {
@@ -256,7 +291,7 @@ export class UtilityKpiComponent implements OnInit,OnDestroy{
             return;
         }
         // 'all' かつ切削の場合は固定項目のみ
-        if (this.partslistValue.code === 'all' && type == 1) {
+        if (this.partslistValue.code === 'all' && this.typeNum == 1) {
             // 固定項目として全ラインを宣言
             const fixedItem = { name: '全ライン', code: 'all' };
             this.machinelistValues = [fixedItem];
@@ -267,17 +302,17 @@ export class UtilityKpiComponent implements OnInit,OnDestroy{
         else{
             // 固定項目として全設備を宣言
             const fixedItem = { name: '全設備', code: 'all' };
-            this.kpiService.getLineNo_type(factoryCode, partsCode, type).subscribe({
+            this.kpiService.getLineNo_type(factoryCode, partsCode, this.typeNum).subscribe({
             next: (items: any[]) => {
             const list = Array.isArray(items) ? items : [];
             let dynamicItems: OptionItem[] = [];
-            if (type === 0) {
+            if (this.typeNum === 0) {
                 // 鍛造なら machine_name
                 dynamicItems = list.map(item => ({
                 name: item?.machine_name ?? '',
                 code: item?.machine_name ?? ''
                 }));
-            } else if (type === 1) {
+            } else if (this.typeNum === 1) {
                 // 切削なら line_no
                 dynamicItems = list.map(item => ({
                 name: item?.line_no ?? '',
@@ -303,45 +338,31 @@ export class UtilityKpiComponent implements OnInit,OnDestroy{
     
     }
 
-    // 加工切替の更新
-    updateToggleState(code: number): void {
-        if (code === 1) {
-        // code=1 → false に固定、以降変更不可
-        this.toggleValue = false;
-        this.toggleDisabled = true;
-        } else if (code === 5) {
-        // code=5 → 変更可能（値は強制しない）
-        this.toggleDisabled = false;
-        // ここで値を初期化したい場合は以下を使う（任意）
-        // this.toggleValue = this.toggleValue; // 現状維持
-        } else {
-        // その他 → true に固定、以降変更不可
-        this.toggleValue = true;
-        this.toggleDisabled = true;
-        }
-    }
-
-    // 品番選択後の設備リスト再読み込み
-    onPartsNoSelect() {        
-    if (this.partslistValue && this.partslistValue.code !== undefined) {
-        this.loadDropdownItems2(this.factoryNo, this.partslistValue.code);
+    // 品番選択後
+    onPartsNoSelect() {
+        // const index = this.partslistValues.findIndex(x => x.code === this.partslistValue?.code);
+        // console.log('index:',index);
+        if (this.partslistValue && this.partslistValue.code !== undefined) {
+            this.loadMachineListItems(this.factoryNo, this.partslistValue.code);
         }
 
     }
-    // ユーザーがトグルを押した時のハンドラ（必要なら）
-    onToggleChange(): void {
-        this.loadDropdownItems(this.factoryNo);
-        this.loadLastupdated();
+    // 品名選択後
+    onPartsNameSelect() {
+        // const index
+        if (this.partslistValue && this.partslistValue.code !== undefined) {
+            this.loadMachineListItems(this.factoryNo, this.partslistValue.code);
+        }
     }
-
+    
+    // 最終更新日を取得
     loadLastupdated(){
-        const type = this.toggleValue ? 1 : 0;              // 加工方法 1:切削　0:鍛造
-        this.kpiService.getDatePlan(type).pipe(takeUntil(this.destroy$))
+        this.kpiService.getDatePlan(this.typeNum).pipe(takeUntil(this.destroy$))
             .subscribe((item: LastUpdatedPlan) =>{
                 this.updated_plan = item.updated_at;
                 
         });
-        this.kpiService.getDateProd(this.factoryNo,type).pipe(takeUntil(this.destroy$))
+        this.kpiService.getDateProd(this.factoryNo,this.typeNum).pipe(takeUntil(this.destroy$))
             .subscribe((item: LastUpdatedProd) =>{
                 this.updated_prod = item.prod_date;
 
@@ -354,7 +375,6 @@ export class UtilityKpiComponent implements OnInit,OnDestroy{
         const textColor = documentStyle.getPropertyValue('--text-color');
         const textColorSecondary = documentStyle.getPropertyValue('--text-color-secondary');
         const surfaceBorder = documentStyle.getPropertyValue('--surface-border');
-        const type = this.toggleValue ? 1 : 0;              // 加工方法 1:切削　0:鍛造
         
         // 生産実績
         this.ProdChartData = {
@@ -366,7 +386,6 @@ export class UtilityKpiComponent implements OnInit,OnDestroy{
                     backgroundColor: '#b0b0b0ff',
                     borderColor: '#b0b0b0ff',
                     data: [6000, 6000, 6000, 6000, 6000, 0, 0],
-                    yAxisID: 'y-axis-1'
                 },
                 {
                     type: 'bar',
@@ -374,7 +393,6 @@ export class UtilityKpiComponent implements OnInit,OnDestroy{
                     backgroundColor: '#0022ffff',
                     borderColor: '#0022ffff',
                     data: [6100, 5800, 5500, 6200, 6000, 0, 0],
-                    yAxisID: 'y-axis-1'
                 }
                 
             ]
@@ -394,14 +412,16 @@ export class UtilityKpiComponent implements OnInit,OnDestroy{
                         }
                     }
                 },
-                legendLikeText: {    
-                    lines: [`進捗:${this.judge} 計画比:${this.delta}`],
-                    align: 'right',   // 'left' も可
-                    position: 'top',  // 'bottom' も可
-                    color: '#444',
-                    font: { size: 30, weight: 'normal' },
-                    margin: 8,
-                }
+                // legendLikeText: {
+                //     x: 200,
+                //     y: 20,
+                //     lines: [`進捗:${this.judge} 計画比:${this.delta}`],
+                //     align: 'right',   // 'left' も可
+                //     position: 'top',  // 'bottom' も可
+                //     color: '#444',
+                //     font: { size: 30, weight: 'normal' },
+                //     margin: 8,
+                // }
             },
             layout: { padding:{top:0}},
             scales: {
@@ -425,7 +445,7 @@ export class UtilityKpiComponent implements OnInit,OnDestroy{
                     }
                 },
                 // Y軸の設定
-                'y-axis-1': {
+                y: {
                     type: 'linear',
                     position: 'left',
                     title:{
@@ -462,7 +482,6 @@ export class UtilityKpiComponent implements OnInit,OnDestroy{
                     backgroundColor: '#b0b0b0ff',
                     borderColor: '#b0b0b0ff',
                     data: [60, 60, 60, 60, 60, 0, 0],
-                    yAxisID: 'y-axis-1'
                 },
                 {
                     type: 'bar',
@@ -470,7 +489,6 @@ export class UtilityKpiComponent implements OnInit,OnDestroy{
                     backgroundColor: '#0022ffff',
                     borderColor: '#0022ffff',
                     data: [102, 97, 91, 103, 10],
-                    yAxisID: 'y-axis-1'
                 },
                 
             ]
@@ -513,7 +531,8 @@ export class UtilityKpiComponent implements OnInit,OnDestroy{
                     }
                 },
                 // Y軸の設定
-                'y-axis-1': {
+                y: {
+                    max: 100,
                     type: 'linear',
                     position: 'left',
                     title:{
@@ -538,31 +557,28 @@ export class UtilityKpiComponent implements OnInit,OnDestroy{
         }
 
         // 不良率
-        if(type === 0){
+        if(this.typeNum === 0){
             this.DefectRateData = {
             labels: this.labels_day,
             datasets: [
                 {
                 type: 'bar',
-                label: '工程内不良',
+                label: '工程内',
                 backgroundColor: '#ff0000ff',
                 data: [0.25, 0.19, 0.40, 0.1, 0.3],
-                yAxisID: 'y-axis-1'
                 },
                 
                 {
                 type: 'bar',
-                label: '捨て打ち',
+                label: '捨打ち',
                 backgroundColor: '#b0b0b0ff',
                 data: [0.28, 0.28, 0.20, 0.2, 0.2],
-                yAxisID: 'y-axis-1'
                 },
                 {
                 type: 'bar',
                 label: '段取り',
                 backgroundColor: '#fed70fff',
                 data: [0.28, 0.28, 0.20, 0.2, 0.2],
-                yAxisID: 'y-axis-1'
                 }
                 
             ]
@@ -570,33 +586,23 @@ export class UtilityKpiComponent implements OnInit,OnDestroy{
         };
 
         }
-        else if(type === 1){
+        else if(this.typeNum === 1){
             this.DefectRateData = {
             labels: this.labels_day,
             datasets: [
                 {
                 type: 'bar',
-                label: '工程内不良',
+                label: '工程内',
                 backgroundColor: '#ff0000ff',
                 data: [0.25, 0.19, 0.40, 0.1, 0.3],
-                yAxisID: 'y-axis-1'
                 },
                 
                 {
                 type: 'bar',
-                label: '外観不良',
+                label: '外観',
                 backgroundColor: '#66BB6A',
                 data: [0.28, 0.28, 0.20, 0.2, 0.2],
-                yAxisID: 'y-axis-1'
                 },
-                // {
-                // type: 'line',
-                // label: '目標不良率',
-                // //backgroundColor: '#de2f2fff',
-                // borderColor: '#000000ff',
-                // data: new Array(31).fill(0.5),
-                // yAxisID: 'y-axis-1'
-                // }
                 
             ]
 
@@ -636,7 +642,7 @@ export class UtilityKpiComponent implements OnInit,OnDestroy{
                     },
                 },
                 // Y軸の設定
-                'y-axis-1': {
+                y: {
                     type: 'linear',
                     position: 'left',
                     stacked: true,
@@ -670,17 +676,16 @@ export class UtilityKpiComponent implements OnInit,OnDestroy{
     displayCharts(){
         // UIに入力されているデータを格納
         const factory = this.factoryNo | 0;
-        const type = this.toggleValue ? 1 : 0;              // 加工方法 1:切削　0:鍛造
         const machine = this.machinelistValue?.code;        // 設備
         const date = getFirstDayOfCurrentMonthInJST();      // 今月1日をstring型で生成
         let parts = this.partslistValue?.code;              // 品番
         // 切削の場合、あいまい検索用に品番を成形
         // 末尾の'-1'を削除
-        if(type == 1 && parts?.endsWith('-1')){
+        if(this.typeNum == 1 && parts?.endsWith('-1')){
             parts = parts.slice(0,-2);
         }
         // 末尾の'ＣＫＤ'を削除
-        if(type == 1 && parts?.endsWith('CKD')){
+        if(this.typeNum == 1 && parts?.endsWith('CKD')){
             parts = parts.slice(0,-3);
         }
         let daycount = 0;       // 稼働日数(生産進捗表示に使用)
@@ -713,7 +718,7 @@ export class UtilityKpiComponent implements OnInit,OnDestroy{
         }
         // 2)生産計画と生産実績を取得
         // 鍛造
-        if(type === 0){
+        if(this.typeNum === 0){
         const planByDay: number[] = new Array(31).fill(0);      //日ごと生産計画数
         this.kpiService.getForgingKpi(factory, parts, machine, date).subscribe({
             next: (res: ForgingResponse) => {
@@ -771,8 +776,6 @@ export class UtilityKpiComponent implements OnInit,OnDestroy{
                 this.OperatingAve = averageNonZero1D(progPerplan);
                 this.DefectSum = addManyArrays(inlinedefByDay,wastedefByDay,setupdefByDay);
                 this.DefectAve = averageNonZero1D(this.DefectSum);
-                console.log('OperatingAve:',this.OperatingAve);
-                console.log('DefectAve:',this.DefectAve);
 
             },
             error: (err) => console.error(err),
@@ -780,7 +783,7 @@ export class UtilityKpiComponent implements OnInit,OnDestroy{
 
         }
         // 切削
-        else if(type === 1){
+        else if(this.typeNum === 1){
             this.kpiService.getMachiningKPI(factory, parts, machine, date).subscribe({
             next: (res: MachiningResponse) => {
                 // --- アクセス方法 ---
@@ -858,8 +861,7 @@ export class UtilityKpiComponent implements OnInit,OnDestroy{
                 this.OperatingAve = averageNonZero1D(progPerplan);
                 this.DefectSum = addArrays(inlinedefByDay,visualdefByDay);
                 this.DefectAve = averageNonZero1D(this.DefectSum);
-                console.log('OperatingAve:',this.OperatingAve);
-                console.log('DefectAve:',this.DefectAve);
+                
             },
             error: (err) => console.error(err),
             });
@@ -869,30 +871,26 @@ export class UtilityKpiComponent implements OnInit,OnDestroy{
 
     // 不良率凡例変更
     chengeDefectLegend(){
-        const type = this.toggleValue ? 1 : 0;              // 加工方法 1:切削　0:鍛造
         // 不良率
-        if(type === 0){
+        if(this.typeNum === 0){
             this.DefectRateData = {
             labels: this.labels_day,
             datasets: [
                 {
                 type: 'bar',
-                label: '工程内不良',
+                label: '工程内',
                 backgroundColor: '#ff0000ff',
-                yAxisID: 'y-axis-1'
                 },
                 
                 {
                 type: 'bar',
-                label: '捨て打ち',
+                label: '捨打ち',
                 backgroundColor: '#b0b0b0ff',
-                yAxisID: 'y-axis-1'
                 },
                 {
                 type: 'bar',
                 label: '段取り',
                 backgroundColor: '#fed70fff',
-                yAxisID: 'y-axis-1'
                 }
                 
             ]
@@ -900,22 +898,20 @@ export class UtilityKpiComponent implements OnInit,OnDestroy{
         };
 
         }
-        else if(type === 1){
+        else if(this.typeNum === 1){
             this.DefectRateData = {
             labels: this.labels_day,
             datasets: [
                 {
                 type: 'bar',
-                label: '工程内不良',
+                label: '工程内',
                 backgroundColor: '#ff0000ff',
-                yAxisID: 'y-axis-1'
                 },
                 
                 {
                 type: 'bar',
-                label: '外観不良',
+                label: '外観',
                 backgroundColor: '#66BB6A',
-                yAxisID: 'y-axis-1'
                 },
                 // {
                 // type: 'line',
@@ -923,7 +919,6 @@ export class UtilityKpiComponent implements OnInit,OnDestroy{
                 // //backgroundColor: '#de2f2fff',
                 // borderColor: '#000000ff',
                 // data: new Array(31).fill(0.5),
-                // yAxisID: 'y-axis-1'
                 // }
                 
             ]
@@ -935,36 +930,39 @@ export class UtilityKpiComponent implements OnInit,OnDestroy{
 
     // 生産勝ち負け表示
     displayProdResult(PlanTotal:number,ProgTotal:number){
+        let value;
         if(PlanTotal>ProgTotal){
             this.judge = '✖';
-            this.delta = Math.floor(PlanTotal-ProgTotal);
+            value = Math.floor(PlanTotal-ProgTotal);
+            this.delta = '-' + value.toLocaleString('ja-JP');
         }
         else{
             this.judge = '〇';
-            this.delta = Math.floor(ProgTotal - PlanTotal);
+            value = Math.floor(ProgTotal - PlanTotal)
+            this.delta = '+' + value.toLocaleString('ja-JP');
         }
 
         // グラフエリア内の凡例風文字列を変更
-        const value = new Intl.NumberFormat('ja-JP').format(this.delta);
-        const lines = [`進捗:${this.judge} 計画比:${value}`];
-        let color;
-        if(this.judge === '〇'){
-            color='#2563ecff'
-        }
-        else if(this.judge === '✖'){
-            color='#dc2626'
-        }
-        // オプション再生成（参照を変える）
-        this.ProdChartOptions = {
-            ...this.ProdChartOptions,
-            plugins: {
-            ...this.ProdChartOptions.plugins,
-            legendLikeText: {
-                ...this.ProdChartOptions.plugins?.legendLikeText,
-                lines,color
-            }
-            }
-        };
+        // const value = new Intl.NumberFormat('ja-JP').format(this.delta);
+        // const lines = [`進捗:${this.judge} 計画比:${value}`];
+        // let color;
+        // if(this.judge === '〇'){
+        //     color='#2563ecff'
+        // }
+        // else if(this.judge === '✖'){
+        //     color='#dc2626'
+        // }
+        // // オプション再生成（参照を変える）
+        // this.ProdChartOptions = {
+        //     ...this.ProdChartOptions,
+        //     plugins: {
+        //     ...this.ProdChartOptions.plugins,
+        //     legendLikeText: {
+        //         ...this.ProdChartOptions.plugins?.legendLikeText,
+        //         lines,color
+        //     }
+        //     }
+        // };
         // 反映が弱いときは refresh
         this.prodChart?.refresh();
     
