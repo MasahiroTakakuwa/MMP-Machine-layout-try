@@ -125,7 +125,8 @@ export class SchedulerService {
         const query = await this.PartsMachinesRepo
         .createQueryBuilder('m')
         .select(['m.parts_name AS parts_name',
-                 'm.line_no AS line_no',
+                 'MIN(m.line_no) AS min_line_no',
+                 'MAX(m.line_no) AS max_line_no',
                  'm.group_no AS group_no'
         ])
         .where('m.factory_type = :factory', {factory})

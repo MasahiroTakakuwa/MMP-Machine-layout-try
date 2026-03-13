@@ -2,13 +2,12 @@
 .checkbox-row {
   display: flex;
   align-items: center;   /* ← これで縦方向の中央揃え */
-//   min-height: 40px;       /* 行高さがある場合に安定 */
+
 }
 
 .cb-scale .p-checkbox {
   transform: scale(2.0);     /* 1.0 = 等倍。大きくしたい値に変更 */
-//   transform-origin: left center;
-//   margin-top: 20px;          /* 必要に応じて調整 */
+
 }
 
 :host {
@@ -54,6 +53,84 @@
 }
 
 .schedule-chart {
-  .p-chart { display: block; width: 100%; }
-  .p-chart > canvas { height: 100% !important; width: 100% !important; }
+  .p-chart { 
+    display: block; 
+    width: 100%; 
+  }
+  .p-chart > canvas { 
+    // height: 100%; 
+    width: 100%;
+    display: block;
+  }
 }
+
+// 外部凡例関連
+.chart-row {
+  display: flex;
+  width: 100%;
+  min-width: 0;
+  /* 一行の総高さは親の [style.height.px]="chartHeight" などで管理 */
+}
+
+.chart-canvas {
+  flex: 1 1 auto;           /* 左は可変 */
+  min-width: 0;
+}
+
+.chart-legend {
+  flex: 0 0 60px;           /* 右の固定幅。お好みで 80〜120px など */
+  margin-top: 30px;
+  margin-left: 8px;
+  display: flex;
+  align-items: flex-start;  /* 上寄せ（右上の印象に） */
+  justify-content: flex-start;
+  gap: 8px;
+  flex-direction: column;
+  /* スクロールにしたい場合 */
+  overflow: auto;
+  max-height: 100%;
+}
+
+.chart-legend .legend-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  white-space: nowrap;
+  font-size: 12px;          /* 小さめで縦詰め */
+}
+.chart-legend .legend-swatch {
+  width: 10px;
+  height: 10px;
+  border-radius: 2px;
+}
+
+// 縦書きラベル関連
+/* p-chart を包むラッパーを相対配置にして、子の縦ラベルを絶対配置 */
+.chart-with-vertical-title {
+  position: relative;
+  min-height: 0;
+}
+
+/* 縦書きY軸タイトル */
+.chart-with-vertical-title .y-axis-vertical-title {
+  position: absolute;
+  /* 左端に貼りつけ。padding.left と合わせて微調整してください */
+  left: 0px;
+  /* チャート縦中央に配置 */
+  top: 50%;
+  transform: translateY(-50%);
+  writing-mode: vertical-rl;
+  text-orientation: mixed; /* 日本語の約物/数字の縦中横に有効 */
+  font-size: 16px;
+  color: #666;
+  white-space: nowrap;
+  pointer-events: none; /* クリック透過 */
+}
+
+/* 必要であればレスポンシブでフォントやleftを縮める */
+// @media (max-width: 768px) {
+//   .chart-with-vertical-title .y-axis-vertical-title {
+//     font-size: 11px;
+//     left: 2px;
+//   }
+// }

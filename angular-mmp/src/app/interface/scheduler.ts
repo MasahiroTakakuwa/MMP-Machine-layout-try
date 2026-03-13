@@ -40,7 +40,8 @@ export interface ColumnDef{
 export interface Grouplist{
     parts_name: string,
     group_no: number,
-    line_no: number
+    min_line_no: number,
+    max_line_no: number
 }
 
 export interface LineItems{
@@ -48,4 +49,12 @@ export interface LineItems{
     line_no: number,
     header: number,
     footer: number
+}
+
+export interface HtmlLegendOptions {
+  containerId: string;                    // 右側凡例のDOMコンテナID
+  colorMap?: Record<string, string>;      // ラベル -> 色
+  order?: string[];                       // 表示順（先頭が上に）
+  fontSize?: number;                      // 凡例ラベルのフォントサイズ（px）
+  boxSize?: number;                       // カラースウォッチの一辺（px）
 }

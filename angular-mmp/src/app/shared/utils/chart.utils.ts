@@ -11,12 +11,12 @@ const STATE_COLORS: Record<number,string> = {
 }
 
 // 刃具別カラーマップ
-export const legendColorMap_Tools: Record<string, string> = {
-  T5: '#a200ff', // 紫
-  T4: '#0011ff', // 青
-  T3: '#ffbb00', // 黄
-  T2: '#81bb66', // 緑
-  T1: '#ff0000', // 赤
+export const legendColorMap_Tools: Record<string, string> = {  
+  'T1': '#ff0000', // 赤
+  'T2': '#81bb66', // 緑
+  'T3': '#ffbb00', // 黄
+  'T4': '#0011ff', // 青
+  'T5': '#a200ff', // 紫
 
 };
 
