@@ -62,13 +62,43 @@
                                 </div>
                             </div>
                         </div>
-                        <p-chart type="bar" [data]="ProdChartData" [options]="ProdChartOptions" [height]="chartHeight+'px'" [style.height.px]="chartHeight"></p-chart>
-                        
+                        <!-- チャートを左右で分割し右側に外部凡例を配置 -->
+                        <div class="chart-row">
+                            <!-- 左側:チャート -->
+                            <div class="chart-canvas">
+                                <p-chart type="bar" [data]="ProdChartData" [options]="ProdChartOptions" 
+                                                    [height]="chartHeight+'px'" [style.height.px]="chartHeight"
+                                                    [plugins]="[htmlLegendPlugin]">
+                                </p-chart>
+                            </div>
+                            <!-- 右側:外部凡例コンテナ -->
+                            <div class="chart-legend" [id]="'product-legend'"></div>
+                        </div>
                         <div class="font-semibold text-2xl mb-2">稼働率 [%]</div>
-                        <p-chart type="bar" [data]="OperatingRateData" [options]="OperatingRateOptions" [height]="chartHeight+'px'" [style.height.px]="chartHeight"></p-chart>
-                        
+                        <div class="chart-row">
+                            <!-- 左側:チャート -->
+                            <div class="chart-canvas">
+                                <p-chart type="bar" [data]="OperatingRateData" [options]="OperatingRateOptions"
+                                                    [height]="chartHeight+'px'" [style.height.px]="chartHeight"
+                                                    [plugins]="[htmlLegendPlugin]">
+                                </p-chart>
+                            </div>
+                            <!-- 右側:外部凡例コンテナ -->
+                            <div class="chart-legend" [id]="'operating-legend'"></div>
+                        </div>
+
                         <div class="font-semibold text-2xl mb-2">不良率 [%]</div>
-                        <p-chart type="bar" [data]="DefectRateData" [options]="DefectRateOptions" [height]="chartHeight+'px'" [style.height.px]="chartHeight"></p-chart>
+                        <div class="chart-row">
+                            <!-- 左側:チャート -->
+                            <div class="chart-canvas">
+                                <p-chart type="bar" [data]="DefectRateData" [options]="DefectRateOptions"
+                                                    [height]="chartHeight+'px'" [style.height.px]="chartHeight"
+                                                    [plugins]="[htmlLegendPlugin]">
+                                </p-chart>
+                            </div>
+                            <!-- 右側:外部凡例コンテナ -->
+                            <div class="chart-legend" [id]="'defect-legend'"></div>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -77,26 +107,11 @@
     <!-- ここまで -->
 </p-fluid>
 
-<!-- <div class="col-span-12 xl:col-span-12">
-        <div class="card">
-            <div class="font-semibold text-2xl mb-2">生産実績 [個]</div>
-            <p-chart type="bar" [data]="ProdChartData" [options]="ProdChartOptions" style="height: 300px;"></p-chart>
-        </div>
-    </div>
+<!-- バックアップ -->
+<!-- <p-chart type="bar" [data]="ProdChartData" [options]="ProdChartOptions" [height]="chartHeight+'px'" [style.height.px]="chartHeight"></p-chart>
+                        
+<div class="font-semibold text-2xl mb-2">稼働率 [%]</div>
+<p-chart type="bar" [data]="OperatingRateData" [options]="OperatingRateOptions" [height]="chartHeight+'px'" [style.height.px]="chartHeight"></p-chart>
 
-    <div class="col-span-12 xl:col-span-12">
-        <div class="card">        
-            <div class="font-semibold text-2xl mb-2">稼働率 [%]</div>
-            <p-chart type="bar" [data]="OperatingRateData" [options]="OperatingRateOptions" style="height: 300px;"></p-chart>
-        </div>
-    </div>
-
-    <div class="col-span-12 xl:col-span-12">
-        <div class="card">        
-            <div class="font-semibold text-2xl mb-2">不良率 [%]</div>
-            <p-chart type="bar" [data]="DefectRateData" [options]="DefectRateOptions" style="height: 300px;"></p-chart>
-        </div>
-    </div> -->
-
-
-    
+<div class="font-semibold text-2xl mb-2">不良率 [%]</div>
+<p-chart type="bar" [data]="DefectRateData" [options]="DefectRateOptions" [height]="chartHeight+'px'" [style.height.px]="chartHeight"></p-chart> -->

@@ -63,3 +63,44 @@ $ng-color:   #dc2626; // 赤（Tailwindのred-600相当)
   .p-chart { display: block; width: 100%; }
   .p-chart > canvas { height: 100% !important; width: 100% !important; }
 }
+
+// 外部凡例関連
+.chart-row {
+  display: flex;
+  width: 100%;
+  min-width: 0;
+  /* 一行の総高さは親の [style.height.px]="chartHeight" などで管理 */
+}
+
+.chart-canvas {
+  flex: 1 1 auto;           /* 左は可変 */
+  margin-left: 10px;
+  min-width: 0;
+}
+
+.chart-legend {
+  flex: 0 0 80px;           /* 右の固定幅。お好みで 80〜120px など */
+  margin-top: 30px;
+  margin-left: 8px;
+  display: flex;
+  align-items: flex-start;  /* 上寄せ（右上の印象に） */
+  justify-content: flex-start;
+  gap: 8px;
+  flex-direction: column;
+  /* スクロールにしたい場合 */
+  overflow: auto;
+  max-height: 100%;
+}
+
+.chart-legend .legend-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  white-space: nowrap;
+  font-size: 12px;          /* 小さめで縦詰め */
+}
+.chart-legend .legend-swatch {
+  width: 10px;
+  height: 10px;
+  border-radius: 2px;
+}

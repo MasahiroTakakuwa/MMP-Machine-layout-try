@@ -1,4 +1,4 @@
-import { Component, OnInit, OnDestroy,viewChild, ViewChild } from "@angular/core";
+import { Component, OnInit, OnDestroy, ViewChild } from "@angular/core";
 import { ActivatedRoute } from "@angular/router";
 import { CommonModule } from "@angular/common";
 import { FormsModule } from "@angular/forms";
@@ -29,6 +29,7 @@ import Chart, {
   Chart as ChartJS,         // クラス本体
   ChartType,               // 'bar' | 'line' | ...
   Plugin,                  // プラグイン型
+  LegendItem
 }
  from 'chart.js/auto';
 
@@ -61,9 +62,16 @@ interface LegendLikeTextOptions {
   y?: number;
 }
 
-// ここまで
+// 外部凡例用オプション
+interface HtmlLegendOptions {
+  containerId: string;                    // 右側凡例のDOMコンテナID
+  colorMap?: Record<string, string>;      // ラベル -> 色
+  order?: string[];                       // 表示順（先頭が上に）
+  fontSize?: number;                      // 凡例ラベルのフォントサイズ（px）
+  boxSize?: number;                       // カラースウォッチの一辺（px）
+}
 
-// --- (2) Chart.js へプラグインオプションを「認識」させる（モジュール拡張） ---
+// --- Chart.js へプラグインオプションを「認識」させる（モジュール拡張） ---
 declare module 'chart.js' {
   // すべてのチャートタイプ(TType)に対して legendLikeText オプションを追加
   // 必要に応じて個別の TType ごとに分けてもOK
@@ -131,8 +139,6 @@ const LegendLikeTextPlugin: Plugin<ChartType> = {
   },
 };
 
-// ここまで
-
 // （A）グローバル登録で使う場合
 Chart.register(LegendLikeTextPlugin);
 
@@ -155,6 +161,84 @@ export class UtilityKpiComponent implements OnInit,OnDestroy{
     factory = '';
     type = '';
     subscription: Subscription;
+
+    // 右側外部凡例のプラグイン
+        public htmlLegendPlugin = {
+            id: 'htmlLegend',
+            afterUpdate(chart: Chart, _args: any, options: HtmlLegendOptions) {
+                const { containerId, colorMap = {}, order = [], fontSize = 12, boxSize = 10 } = options || {};
+                if (!containerId) return;
+    
+                const container = document.getElementById(containerId);
+                if (!container) return;
+    
+                // 右側コンテナを空にする
+                while (container.firstChild) container.firstChild.remove();
+    
+                // 既定の凡例項目を取得
+                const items: LegendItem[] = Chart.defaults.plugins.legend.labels.generateLabels(chart);
+    
+                // 色適用
+                items.forEach((item) => {
+                const text = item.text ?? '';
+                const color = colorMap[text] ?? '#666';
+                item.fillStyle = color;
+                item.strokeStyle = color;
+                item.lineWidth = 0;
+                });
+    
+                // 並び順（指定があれば適用）
+                if (order.length) {
+                const orderIndex = new Map(order.map((k, i) => [k, i]));
+                items.sort((a, b) => {
+                    const ai = orderIndex.get(a.text ?? '') ?? Number.MAX_SAFE_INTEGER;
+                    const bi = orderIndex.get(b.text ?? '') ?? Number.MAX_SAFE_INTEGER;
+                    return ai - bi;
+                });
+                }
+    
+                // HTML生成（クリックで表示/非表示トグルの既定挙動を再現）
+                items.forEach((item) => {
+                const li = document.createElement('div');
+                li.className = 'legend-item';
+                li.style.display = 'flex';
+                li.style.alignItems = 'center';
+                li.style.gap = '6px';
+                li.style.whiteSpace = 'nowrap';
+                li.style.fontSize = `${fontSize}px`;
+                li.style.cursor = 'pointer';
+    
+                const swatch = document.createElement('span');
+                swatch.className = 'legend-swatch';
+                swatch.style.width = `${boxSize}px`;
+                swatch.style.height = `${boxSize}px`;
+                swatch.style.borderRadius = '2px';
+                swatch.style.background = (item.fillStyle as string) || '#666';
+    
+                const label = document.createElement('span');
+                label.textContent = item.text ?? '';
+    
+                // クリックで可視/不可視を切替
+                // li.onclick = () => {
+                //     const type = chart.config.type;
+                //     if (type === 'pie' || type === 'doughnut') {
+                //     chart.toggleDataVisibility(item.index!);
+                //     } else {
+                //     const dsMeta = chart.getDatasetMeta(item.datasetIndex!);
+                //     dsMeta.hidden = dsMeta.hidden === null
+                //         ? !chart.data.datasets[item.datasetIndex!].hidden
+                //         : null;
+                //     }
+                //     chart.update();
+                // };
+    
+                li.appendChild(swatch);
+                li.appendChild(label);
+                container.appendChild(li);
+                });
+            },
+        };
+
     constructor(
         private route: ActivatedRoute,
         private layoutService: LayoutService,
@@ -183,10 +267,6 @@ export class UtilityKpiComponent implements OnInit,OnDestroy{
 
     // 加工方法(切削・鍛造)のルートパラメータの格納先を宣言(number)
     typeNum: number = 0;
-
-    // 加工
-    // toggleValue: boolean = true;            // true:切削・false:鍛造
-    // toggleDisabled: boolean = false;        // ボタン動作の許可(STN以外はどちらかのみのため不許可)
     // 品番
     partslistValues:  Dropdownitem[] = [];
     partslistValue: Dropdownitem | null = null;
@@ -375,7 +455,23 @@ export class UtilityKpiComponent implements OnInit,OnDestroy{
         const textColor = documentStyle.getPropertyValue('--text-color');
         const textColorSecondary = documentStyle.getPropertyValue('--text-color-secondary');
         const surfaceBorder = documentStyle.getPropertyValue('--surface-border');
-        
+        let colorMap_defect: Record<string,string>={};
+        if(this.typeNum === 0){
+            colorMap_defect = {
+                '工程内': '#ff0000ff',
+                '捨打ち': '#b0b0b0ff',
+                '段取り': '#fed70fff'    
+            }
+
+        }
+        else if(this.typeNum === 1){
+            colorMap_defect = {
+                '工程内': '#ff0000ff',
+                '外観': '#66BB6A'    
+            }
+
+        }
+
         // 生産実績
         this.ProdChartData = {
             labels: this.labels_day,
@@ -404,24 +500,19 @@ export class UtilityKpiComponent implements OnInit,OnDestroy{
             responsive: true,
             plugins: {
                 legend: {
-                    position: 'right',
-                    labels: {
-                        color: textColor,
-                        font: {
-                            size:20
-                        }
-                    }
-                },
-                // legendLikeText: {
-                //     x: 200,
-                //     y: 20,
-                //     lines: [`進捗:${this.judge} 計画比:${this.delta}`],
-                //     align: 'right',   // 'left' も可
-                //     position: 'top',  // 'bottom' も可
-                //     color: '#444',
-                //     font: { size: 30, weight: 'normal' },
-                //     margin: 8,
-                // }
+                    display: false,
+                } as any,
+                htmlLegend: {    
+                    containerId: 'product-legend',
+                        // 任意：このページ専用の凡例色・並び
+                        colorMap: {
+                        '計画': '#b0b0b0ff',
+                        '実績': '#0022ffff',
+                        },
+                        fontSize: 18,
+                        boxSize: 10,
+                } as any,
+                
             },
             layout: { padding:{top:0}},
             scales: {
@@ -501,14 +592,18 @@ export class UtilityKpiComponent implements OnInit,OnDestroy{
             responsive: true,
             plugins: {
                 legend: {
-                    position: 'right',
-                    labels: {
-                        color: textColor,
-                        font: {
-                            size:20
-                        }
-                    }
-                }
+                    display: false,
+                } as any,
+                htmlLegend: {
+                    containerId: 'operating-legend',
+                        // 任意：このページ専用の凡例色・並び
+                        colorMap: {
+                        '目標': '#b0b0b0ff',
+                        '実績': '#0022ffff',
+                        },
+                        fontSize: 18,
+                        boxSize: 10,
+                } as any,
             },
             scales: {
                 x: {
@@ -616,14 +711,14 @@ export class UtilityKpiComponent implements OnInit,OnDestroy{
             responsive: true,
             plugins: {
                 legend: {
-                    position: 'right',
-                    labels: {
-                        color: textColor,
-                        font: {
-                            size:20
-                        }
-                    }
-                }
+                    display: false,
+                } as any,
+                htmlLegend: {
+                    containerId: 'defect-legend',
+                        colorMap:colorMap_defect,
+                        fontSize: 18,
+                        boxSize: 10,
+                } as any,
             },
             scales: {
                 x: {
@@ -653,6 +748,7 @@ export class UtilityKpiComponent implements OnInit,OnDestroy{
                         padding: {top:0,bottom: 8}
                     },
                     ticks: {
+                        callback: (value:any) => Number(value).toFixed(2),
                         color: textColorSecondary,
                         beginAtZero: false,
                         font: {

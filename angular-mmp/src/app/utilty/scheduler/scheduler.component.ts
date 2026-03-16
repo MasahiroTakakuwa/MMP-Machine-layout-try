@@ -502,7 +502,7 @@ export class UtilitySchedulerComponent implements OnInit, OnDestroy {
             },
             layout: {
                 padding: {
-                left: 30,  // ← ここを縦ラベルの幅に合わせて調整（フォントサイズや文字数で増減）
+                left: 40,  // ← ここを縦ラベルの幅に合わせて調整（フォントサイズや文字数で増減）
                 right: 0,
                 top: 0,
                 bottom: 0,
