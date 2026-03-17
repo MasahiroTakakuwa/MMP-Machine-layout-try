@@ -12,6 +12,7 @@ import { typeAsyncOrmMMPMachineConfig } from './configs/configuration-machine.mm
 import { KpiModule } from './kpi/kpi.module';
 import { PlanModule } from './plan/plan.module';
 import { SchedulerModule } from './scheduler/scheduler.module';
+import { ToolChangeLogsModule } from './tool-change-logs/tool-change-logs.module';
 
 @Module({
   imports: [
@@ -31,7 +32,8 @@ import { SchedulerModule } from './scheduler/scheduler.module';
     MachineModule,
     KpiModule,
     PlanModule,
-    SchedulerModule
+    SchedulerModule,
+    ToolChangeLogsModule
   ],
   providers: [],
 })

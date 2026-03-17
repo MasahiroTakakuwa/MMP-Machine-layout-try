@@ -6,7 +6,7 @@ import { ToolChangeLog } from "./models/tool-change-log.entity";
 import { EntityManager,Repository } from "typeorm";
 
 @Injectable()
-export class ToolChangeLogService {
+export class ToolChangeService {
     constructor(
         private entityManager: EntityManager,
         @InjectRepository(Devices)
@@ -60,5 +60,9 @@ export class ToolChangeLogService {
         const result = await query.getRawOne();
         return result;
 
+    }
+
+    async updateToolDetail(factory:number){
+        
     }
 }

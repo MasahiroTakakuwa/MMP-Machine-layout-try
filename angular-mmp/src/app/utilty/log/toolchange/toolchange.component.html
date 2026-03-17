@@ -1,0 +1,33 @@
+<p-fluid class="grid grid-cols-12 gap-8 px-4">
+    <div class="col-span-12 xl:col-span-12">
+        <div class="card">
+            <div class="p-formgroup-inline flex flex-wrap gap-3 align-items-center">
+                <div class="flex align-items-center gap-10">
+                    <div class="flex align-items-center gap-4">
+                    <div class="font-semibold text-2xl">品番</div>
+                    <p-dropdown [(ngModel)]="partslistValue" [options]="partslistValues"
+                                optionLabel="code" placeholder="Select" 
+                                (onChange)="onPartsNoSelect()"/>
+                    </div>
+                    <div class="flex align-items-center gap-4">
+                    <div class="font-semibold text-2xl">品名</div>
+                    <p-dropdown [(ngModel)]="partslistValue" [options]="partslistValues"
+                                optionLabel="name" placeholder="Select"
+                                (onChange)="onPartsNameSelect()"/>
+                    </div>
+
+                    <div class="flex align-items-center gap-4">
+                        <div class="font-semibold text-2xl">ラインNo</div>
+                        <p-dropdown [(ngModel)]="machinelistValue" [options]="machinelistValues" optionLabel="name" placeholder="Select"/>
+                    </div>
+                    <!-- <div class="font-semibold text-2xl">計画更新:{{updated_plan | date:'yyyy/MM/dd'}}</div>
+ 
+                    <div class="font-semibold text-2xl">最新生産:{{updated_prod | date:'yyyy/MM/dd'}}</div>
+                 -->
+                    <p-button label="更新" (onClick)="displayTable()"></p-button>
+                    
+                </div>
+           </div>
+        </div>
+    </div>
+</p-fluid>

@@ -248,6 +248,12 @@ export class AppMenu {
                                 icon: 'pi pi-fw pi-clock',
                                 routerLink: ['/scheduler','mercury']
                                 
+                            },
+                            {
+                                label: '刃具交換ログ',
+                                icon: 'pi pi-fw pi-wrench',
+                                routerLink: ['/toolchange','mercury']
+                                
                             }
                         ]
                     },

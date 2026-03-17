@@ -13,13 +13,12 @@ import { AuthGuard } from './app/guards/auth.guard';
 import { NonAuthGuard } from './app/guards/non-auth.guard';
 import { GeneralInformation } from './app/pages/account-management/generalInformation';
 import { AccountManagement } from './app/pages/account-management/accountManagement';
-// import { Test } from './app/test/test.component';
-// import { Test2 } from './app/test2/test2.component';
 import { PlanComponent } from './app/plan/plan.component';
 import { KpiComponent } from './app/kpi/kpi.component';
-// テストのため追加
+// 共用コンポーネント
 import { UtilityKpiComponent } from './app/utilty/kpi/kpi.component';
 import { UtilitySchedulerComponent } from './app/utilty/scheduler/scheduler.component';
+import { UtilityToolChangeComponent } from './app/utilty/log/toolchange/toolchange.component';
 
 export const appRoutes: Routes = [
     {
@@ -47,8 +46,8 @@ export const appRoutes: Routes = [
             { path: 'kpi', component: KpiComponent},
             // 共用ページに対応するルート定義を追加。
             { path: 'kpi/:factory/:type', component: UtilityKpiComponent},
-            { path: 'scheduler/:factory', component: UtilitySchedulerComponent}
-            // { path: 'test', component: Test},
+            { path: 'scheduler/:factory', component: UtilitySchedulerComponent},
+            { path: 'toolchange/:factory', component: UtilityToolChangeComponent}
             // { path: 'test2', component: Test2},
 
         ]
