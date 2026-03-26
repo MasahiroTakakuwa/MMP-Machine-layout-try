@@ -1,0 +1,45 @@
+.checkbox-row {
+  display: flex;
+  align-items: center;   /* ← これで縦方向の中央揃え */
+
+}
+
+.cb-scale .p-checkbox {
+  transform: scale(2.0);     /* 1.0 = 等倍。大きくしたい値に変更 */
+
+}
+
+.chart-title {
+    display: flex;
+    align-items: flex-end;   /* ← 下揃え */
+    height: 40px;            /* ← タイトル枠の高さを調整 */
+    font-weight: 600;
+    font-size: 1.25rem;      /* text-xl 相当 */
+}
+
+
+:host {
+  .toolchange-page-table {
+    ::ng-deep .p-datatable-thead > tr > th,
+    ::ng-deep .p-datatable-tbody > tr > td{
+      text-align: center !important;
+      font-size: 16px;
+    }
+
+    ::ng-deep .p-datatable .p-datatable-tbody > tr.row-warning {
+      background-color: #ffa600;
+    }
+    // ::ng-deep .p-datatable .p-datatable-tbody > tr.row-ok {
+    //   background-color: #91ff00;
+    // }
+
+    .p-datatable td,
+    .p-datatable th {
+        white-space: nowrap;
+        overflow: hidden;               /* はみ出しを隠す */
+        text-overflow: ellipsis;        /* 省略記号 (…) を表示 */
+    }
+
+  }
+  
+}

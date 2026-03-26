@@ -1,33 +1,102 @@
 <p-fluid class="grid grid-cols-12 gap-8 px-4">
     <div class="col-span-12 xl:col-span-12">
         <div class="card">
+            <!-- ドロップダウンリストなどのUI表示部分 -->
             <div class="p-formgroup-inline flex flex-wrap gap-3 align-items-center">
-                <div class="flex align-items-center gap-10">
+                <div class="flex align-items-center gap-6">
                     <div class="flex align-items-center gap-4">
-                    <div class="font-semibold text-2xl">品番</div>
+                    <div class="font-semibold text-xl">品番</div>
                     <p-dropdown [(ngModel)]="partslistValue" [options]="partslistValues"
                                 optionLabel="code" placeholder="Select" 
                                 (onChange)="onPartsNoSelect()"/>
                     </div>
                     <div class="flex align-items-center gap-4">
-                    <div class="font-semibold text-2xl">品名</div>
+                    <div class="font-semibold text-xl">品名</div>
                     <p-dropdown [(ngModel)]="partslistValue" [options]="partslistValues"
                                 optionLabel="name" placeholder="Select"
                                 (onChange)="onPartsNameSelect()"/>
                     </div>
-
                     <div class="flex align-items-center gap-4">
-                        <div class="font-semibold text-2xl">ラインNo</div>
+                        <div class="font-semibold text-xl">ラインNo</div>
                         <p-dropdown [(ngModel)]="machinelistValue" [options]="machinelistValues" optionLabel="name" placeholder="Select"/>
                     </div>
-                    <!-- <div class="font-semibold text-2xl">計画更新:{{updated_plan | date:'yyyy/MM/dd'}}</div>
- 
-                    <div class="font-semibold text-2xl">最新生産:{{updated_prod | date:'yyyy/MM/dd'}}</div>
-                 -->
-                    <p-button label="更新" (onClick)="displayTable()"></p-button>
-                    
+                    <div class="flex align-items-center gap-4">
+                        <div class="font-semibold text-xl">日付</div>
+                        <p-datepicker [(ngModel)]="rangeValue" selectionMode="range" dateFormat="mm/dd" [showIcon]="true" [showButtonBar]="true" placeholder="開始日から終了日"></p-datepicker>
+                    </div>
+                    <div class="flex align-items-center gap-2">
+                        <div class="font-semibold text-xl">短命のみ表示</div>
+                        <div class="checkbox-row">
+                            <p-checkbox inputId="autoRefresh" [binary]="true" [(ngModel)]="checked" styleClass="cb-scale" 
+                            (onChange)="onToggle($event.checked)"></p-checkbox>
+                        </div>
+                    </div>
+                    <div class="flex align-items-center gap-2">
+                    <div class="font-semibold text-xl">グラフ表示</div>
+                    <p-toggleswitch [(ngModel)]="switchValue" 
+                    (onChange)="onSwitch($event.checked)"></p-toggleswitch>
+                    </div>
+                    <p-button label="表示" (onClick)="displayTable()"></p-button>
+                    <p-button label="理由反映" (onClick)="updateTable()"></p-button>
                 </div>
-           </div>
+            </div>
+            <!-- チャートグラフ(トグルボタンで表示/非表示切替) -->
+            <div *ngIf="switchValue" class="chart-title">使用割合 [%]</div>
+            <p-chart
+            *ngIf="switchValue"
+            [data]="chartData"
+            [options]="chartOptions">
+            </p-chart>
+            <div class ="toolchange-page-table">
+            <!-- テーブルデータ -->
+            <p-table [value]="rows" [columns]="cols" [paginator]="true" [rows]="rowCount" [resizableColumns]="true"
+                    columnResizeMode="fit" [rowHover]="true" dataKey="line_name" [responsiveLayout]="'scroll'">
+                <ng-template pTemplate="header" let-columns>
+                    <tr>
+                    <th *ngFor="let col of columns" pResizableColumn>
+                        {{ col.header }}
+                    </th>
+                    </tr>
+                </ng-template>
+                <ng-template pTemplate="body" let-row let-columns="columns">
+                    <tr [ngClass]="rowStyleClass(row)">
+                    <td>{{row.line_name}}</td>
+                    <td>{{row.side}}</td>
+                    <td>{{row.tool_no}}</td>
+                    <td>{{row.setting_value}}</td>
+                    <td>{{row.changed_value}}</td>
+                    <td>
+                        <!-- cause が空のときだけ編集可能 -->
+                        <ng-container *ngIf="row.editing; else readonly">
+                            <p-dropdown
+                                [options]="causeOptions"
+                                [(ngModel)]="row.cause"
+                                placeholder="要因を選択"
+                                optionLabel="label"
+                                optionValue="value"
+                                appendTo="body"
+                                [showClear]="true">
+                            </p-dropdown>
+                            <!-- "その他" が選択された場合のみ入力欄を表示 -->
+                            <input 
+                                *ngIf="row.cause === 'その他'"
+                                type="text"
+                                [(ngModel)]="row.otherCause"
+                                placeholder="その他の要因を入力"
+                                class="p-inputtext p-component"
+                                style="margin-top: 8px; width: 100%;"
+                            />
+                        </ng-container>
+                        <!-- 既に値がある場合は表示のみ -->
+                        <ng-template #readonly>
+                        {{ row.cause }}
+                        </ng-template>
+                    </td>
+                    <td>{{row.updated_at}}</td>
+                    </tr>
+                </ng-template>
+            </p-table>
+            </div>
         </div>
     </div>
 </p-fluid>

@@ -42,3 +42,23 @@ export function getWeekdaysThisMonthUntilYesterday(now: Date = new Date()): numb
   const yesterday = new Date(year, month, now.getDate() - 1);
   return countWeekdaysInclusive(start, yesterday);
 }
+
+// 日付データをyyyy/MM/ddからyyyy-MM-dd表記に変換
+export function formatDateForMySQL(date: Date): string {
+  if (!date) return '';
+  const year = date.getFullYear();
+  const month = ('0' + (date.getMonth() + 1)).slice(-2);
+  const day = ('0' + date.getDate()).slice(-2);
+  return `${year}-${month}-${day}`;
+}
+
+// 日付の範囲をそれぞれ格納
+export function getRangeForMySQL(rangeValue: Date[]): { start: string, end: string } {
+  if (!rangeValue || rangeValue.length < 2) {
+    return { start: '', end: '' };
+  }
+  return {
+    start: formatDateForMySQL(rangeValue[0]),
+    end: formatDateForMySQL(rangeValue[1])
+  };
+}
