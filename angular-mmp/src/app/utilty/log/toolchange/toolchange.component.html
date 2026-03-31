@@ -48,8 +48,8 @@
             [options]="chartOptions">
             </p-chart>
             <div class ="toolchange-page-table">
-            <!-- テーブルデータ -->
-            <p-table [value]="rows" [columns]="cols" [paginator]="true" [rows]="rowCount" [resizableColumns]="true"
+            <!-- テーブルデータ  [value]="rows" -->
+            <p-table [value]="filteredRows" [columns]="cols" [paginator]="true" [rows]="rowCount" [resizableColumns]="true"
                     columnResizeMode="fit" [rowHover]="true" dataKey="line_name" [responsiveLayout]="'scroll'">
                 <ng-template pTemplate="header" let-columns>
                     <tr>

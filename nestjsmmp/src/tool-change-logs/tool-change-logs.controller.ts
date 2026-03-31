@@ -27,6 +27,12 @@ export class ToolChangeController{
         return this.ToolChangeService.searchToolChangeLogs(factory,parts_name,line_no,start,end,isCheck)
     }
 
+    @Get('rate/sort/asc')
+    getToolRate(@Query('factory') factory:number,@Query('parts_name') parts_name:string,@Query('line_no') line_no:string,
+                @Query('tool_no') tool_no:string,@Query('start') start:string,@Query('end') end:string){
+        return this.ToolChangeService.getToolChangeRate(factory,parts_name,line_no,tool_no,start,end)
+    }
+
     @Post('update/logs/populate-line-name')
     async populateLineName(@Body() dto:UpdateLineNamesDto){
         const affected1 = await this.ToolChangeService.updateToolDetail(dto.factory);

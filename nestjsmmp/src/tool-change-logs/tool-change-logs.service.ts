@@ -70,6 +70,7 @@ export class ToolChangeService {
     // 該当ラインの刃具交換履歴を取得(短命のみ取得切り替えあり)
     async searchToolChangeLogs(factory:number,parts_name:string,line_no:string,start:string,end:string,isCheck:boolean){
         const blank = '';
+        const {header_machine,footer_machine} = await this.getMachineAddress(factory,parts_name,line_no);
         const query = await this.ToolChangeRepo
         .createQueryBuilder('m')
         .select(['m.id AS id',
@@ -82,21 +83,53 @@ export class ToolChangeService {
                  'm.updated_at AS updated_at'
         ])
         .where('m.factory_type = :factory',{factory})
+        .andWhere('m.machine_no BETWEEN :header AND :footer',{header: header_machine,footer: footer_machine,})
+        .andWhere('m.updated_at BETWEEN :start AND :end',{start: start,end:end},)
         .orderBy('m.updated_at')
-        if(parts_name !== '全品番'){
-            const {header_machine,footer_machine} = await this.getMachineAddress(factory,parts_name,line_no);
-            query.andWhere('m.machine_no BETWEEN :header AND :footer',{header: header_machine,footer: footer_machine,})
-        }
-        if(start !== '' && end !== ''){
-            query.andWhere('m.updated_at BETWEEN :start AND :end',{start: start,end:end},)
-        }
-        else if(end === ''){
-            query.andWhere('m.updated_at >= :start',{start})
-        }
+        // 全品番指定は無いと判断しコメントアウト
+        // if(parts_name !== '全品番'){
+        //     const {header_machine,footer_machine} = await this.getMachineAddress(factory,parts_name,line_no);
+        //     query.andWhere('m.machine_no BETWEEN :header AND :footer',{header: header_machine,footer: footer_machine,})
+        // }
+        // if(start !== '' && end !== ''){
+        //     query.andWhere('m.updated_at BETWEEN :start AND :end',{start: start,end:end},)
+        // }
+        // else if(end === ''){
+        //     query.andWhere('m.updated_at >= :start',{start})
+        // }
         if(isCheck === true){
             query.andWhere('m.changed_value < m.setting_value * 0.8')
             query.andWhere('m.cause = :blank',{blank})
         }
+        const results = await query.getRawMany();
+        return results;
+
+    }
+
+    // 指定の日時から取得件数を絞って命数取得(チャートグラフ用にツールNo.も指定)
+    async getToolChangeRate(factory:number,parts_name:string,line_no:string,tool_no:string,start:string,end:string){
+        const {header_machine,footer_machine} = await this.getMachineAddress(factory,parts_name,line_no);
+        const query = await this.ToolChangeRepo
+        .createQueryBuilder('m')
+        .select(['m.id AS id',
+                 'm.line_name AS line_name',
+                 'm.side AS side',
+                 'm.tool_no AS tool_no',
+                 'm.setting_value AS setting_value',
+                 'm.changed_value AS changed_value',
+                 'm.updated_at AS updated_at'
+        ])
+        .where('m.factory_type = :factory',{factory})
+        .andWhere('m.machine_no BETWEEN :header AND :footer',{header: header_machine,footer: footer_machine,})
+        .andWhere('m.tool_no = :tool_no',{tool_no})
+        .andWhere('m.updated_at BETWEEN :start AND :end',{start: start,end:end},)
+        // .andWhere('m.updated_at >= :start',{start})
+        // .andWhere('m.updated_at <= :end',{end})
+        .orderBy('m.updated_at')
+        .take(300)
+        // if(end !==''){
+        //     query.andWhere('m.updated_at <= :end',{end})
+        // }
         const results = await query.getRawMany();
         return results;
 
@@ -137,8 +170,8 @@ export class ToolChangeService {
             UPDATE tool_change_log AS m
             SET m.cause = '定期交換'
             WHERE m.factory_type = ?
-            AND   m.changed_value >= 4 * m.setting_value
-            AND (m.cause IS NULL OR m.cause = '')
+            AND   5 * m.changed_value >= 4 * m.setting_value
+            AND  (m.cause IS NULL OR m.cause = '')
         `;
         const result: any = await this.datasource.query(sql, [factory]);
         return result?.affectedRows ?? 0;
@@ -153,17 +186,15 @@ export class ToolChangeService {
             SET m.cause = ?
             WHERE m.id = ?
         `;
+        
         const result: any = await this.datasource.query(sql, [
             row.cause,
             row.id,
         ]);
         affected += result.affectedRows ?? 0;
-
         }
-
         return affected;
 
     }
-    
 
 }

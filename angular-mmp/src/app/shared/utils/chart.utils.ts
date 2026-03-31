@@ -78,3 +78,42 @@ const n = parseFloat(s);
 return Number.isFinite(n) ? n : NaN;
 }
 
+// 時間差を計算し、X軸のスケールを調整
+export function setDynamicTimeScale(minDate:Date,maxDate:Date){
+  if (!minDate || !maxDate) return;
+    let unitType;
+    let stepSize;
+
+    const diffMs = maxDate.getTime() - minDate.getTime();
+    const diffMinutes = diffMs / 1000 / 60;
+    const diffHours = diffMinutes / 60;
+    const diffDays = diffHours / 24;
+    // 条件分岐
+    // 2日以内:5分刻み
+    if (diffDays <= 2){
+      unitType = 'hour';
+      stepSize = 10;
+    }
+    // 7日以内:2時間刻み
+    else if (diffDays <= 7){
+      unitType = 'hour';
+      stepSize = 2;
+    }
+    // 14日以内:6時間刻み
+    else if (diffDays <= 14){
+      unitType = 'hour';
+      stepSize = 6;
+    }
+    // 30日以内:12時間刻み
+    else if (diffDays <= 30){
+      unitType = 'hour';
+      stepSize = 12;
+    }
+    // それ以上:日単位
+    else {
+      unitType = 'day';
+      stepSize = 1;
+    }
+    return {unitType,stepSize}
+    
+}

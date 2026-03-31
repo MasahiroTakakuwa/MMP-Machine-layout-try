@@ -1,4 +1,3 @@
-
 /** 今月の土曜・日曜になる日付をnumberで取得（1..31） */
 export function getWeekendDaysOfCurrentMonth(): number[] {
   const today = new Date();   // ローカルタイム
@@ -52,13 +51,34 @@ export function formatDateForMySQL(date: Date): string {
   return `${year}-${month}-${day}`;
 }
 
-// 日付の範囲をそれぞれ格納
+// 日付の範囲をそれぞれ格納(切削日基準として時刻は8:00に固定)
 export function getRangeForMySQL(rangeValue: Date[]): { start: string, end: string } {
-  if (!rangeValue || rangeValue.length < 2) {
-    return { start: '', end: '' };
+  // 空欄の場合(当日)
+  if (!rangeValue || rangeValue.length <2) {
+    const today = new Date();
+    const tomorrow = new Date();
+    tomorrow.setDate(today.getDate() + 1);
+    return { start: formatDateForMySQL(today)+' 08:00:00',
+             end: formatDateForMySQL(tomorrow)+' 08:00:00' 
+    };
   }
-  return {
-    start: formatDateForMySQL(rangeValue[0]),
-    end: formatDateForMySQL(rangeValue[1])
-  };
+  const startDate = new Date(rangeValue[0]);
+  const endDate = new Date(rangeValue[1]);
+  // 同じ日付を選択した場合(選択した日)
+  if(rangeValue[1] == null || startDate.getTime() === endDate.getTime()){
+    const selectedDay = new Date(rangeValue[0]);
+    const selectedAdd = new Date(selectedDay);
+    selectedAdd.setDate(selectedDay.getDate() + 1);
+    return { start: formatDateForMySQL(selectedDay) + ' 08:00:00',
+             end: formatDateForMySQL(selectedAdd) + ' 08:00:00'
+    }
+
+  }
+  else{
+      return {
+      start: formatDateForMySQL(rangeValue[0])+' 08:00:00',
+      end: formatDateForMySQL(rangeValue[1])+' 08:00:00'
+    };
+  }
+  
 }

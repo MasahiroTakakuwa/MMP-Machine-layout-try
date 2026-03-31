@@ -17,7 +17,6 @@
     font-size: 1.25rem;      /* text-xl 相当 */
 }
 
-
 :host {
   .toolchange-page-table {
     ::ng-deep .p-datatable-thead > tr > th,
@@ -27,12 +26,9 @@
     }
 
     ::ng-deep .p-datatable .p-datatable-tbody > tr.row-warning {
-      background-color: #ffa600;
+      background-color: #fdadad;
     }
-    // ::ng-deep .p-datatable .p-datatable-tbody > tr.row-ok {
-    //   background-color: #91ff00;
-    // }
-
+    
     .p-datatable td,
     .p-datatable th {
         white-space: nowrap;

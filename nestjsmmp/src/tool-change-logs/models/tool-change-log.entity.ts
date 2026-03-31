@@ -3,16 +3,19 @@ import { Column,Entity,PrimaryColumn } from "typeorm";
 @Entity('tool_change_log')
 
 export class ToolChangeLog {
+  @PrimaryColumn({ name: 'id'})
+  id: number;
+
   @Column({ name: 'factory_type'})
   factory_type: number;
 
-  @PrimaryColumn({ name: 'machine_no'})
+  @Column({ name: 'machine_no'})
   machine_no: number;
   
-  @PrimaryColumn({ name: 'side'})
+  @Column({ name: 'side'})
   side: string;
   
-  @PrimaryColumn({ name: 'tool_no'})
+  @Column({ name: 'tool_no'})
   tool_no: string;
   
   @Column({ name: 'setting_value'})
@@ -24,7 +27,7 @@ export class ToolChangeLog {
   @Column({ name: 'cause'})
   cause: string;
 
-  @PrimaryColumn({ name: 'updated_at'})
+  @Column({ name: 'updated_at'})
   updated_at: Date;
 
 }
