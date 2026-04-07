@@ -1,7 +1,7 @@
 
 // plan.controller.ts
 import { Body, Controller, Post } from '@nestjs/common';
-import { ForgingRowDto,ForgingUploadDto,MachiningUploadDto } from './models/plan-upload.dto';
+import { ForgingUploadDto,MachiningUploadDto } from './models/plan-upload.dto';
 import { PlanService } from './plan.service';
 
 @Controller('plan')
@@ -18,6 +18,13 @@ export class PlanController {
   @Post('upload/machining')
   upload_machining(@Body() body: MachiningUploadDto) {
     this.planservice.CheckMachiningProductPlanning(body);
+    return { ok: true}
+  }
+
+  // 過去の生産計画を別テーブルにコピー
+  @Post('copy/history')
+  copy_history(){
+    this.planservice.copyForgingPastplan();
     return { ok: true}
   }
 

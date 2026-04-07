@@ -43,6 +43,56 @@ export class PlanComponent {
               private http: HttpClient
   ) {}
 
+  /*
+  * 1次元 or 2次元の配列を「number[][]」へ正規化する
+  * 1次元なら [arr] に包んで2次元化。中の要素は toNumberOrZero で数値化
+  */
+  private to2DNumberMatrix(input: (number | string | null)[] | (number | string | null)[][]): number[][] {
+    const toNum = (v: number | string | null): number => this.toNumberOrZero(v);
+
+    if (Array.isArray(input) && Array.isArray(input[0])) {
+      // すでに2次元
+      const twoD = input as (number | string | null)[][];
+      return twoD.map(row => row.map(toNum));
+    } else {
+      // 1次元 → 2次元に包む
+      const oneD = input as (number | string | null)[];
+      return [oneD.map(toNum)];
+    }
+  }
+
+  /* 文字列/数値/null を number へ安全に変換（既存のものを想定）* 
+  * 数値化できない場合は 0*/
+  private toNumberOrZero(v: number | string | null | undefined): number {
+    if (typeof v === 'number') return isFinite(v) ? v : 0;
+    if (typeof v === 'string') {
+      const n = Number(v.replace(/[, ]/g, '')); // カンマ除去など
+      return isFinite(n) ? n : 0;
+    }
+    return 0;
+  }
+
+  private toStringSafe(v: unknown): string {
+    return v == null ? '' : String(v);
+  }
+
+  /** 列番号(0-based) → Excel列名（K..AO）配列を作成 */
+  private buildHeaders(startCol: number, endCol: number): string[] {
+    const toColName = (c: number) => {
+      let s = '';
+      c++; // 1-based
+      while (c > 0) {
+        const m = (c - 1) % 26;
+        s = String.fromCharCode(65 + m) + s;
+        c = Math.floor((c - 1) / 26);
+      }
+      return s;
+    };
+    const headers: string[] = [];
+    for (let c = startCol; c <= endCol; c++) headers.push(toColName(c));
+    return headers;
+  }
+
   // Uploadクリック時の動作
   handleExcelUpload(event: any) {
     const files: File[] = event.files ?? [];
@@ -129,58 +179,6 @@ export class PlanComponent {
     this.messageService.add({key: 'plan', severity: 'info', summary: 'Cleared', detail: 'プレビューをクリアしました。' });
   }
 
-  /** 列番号(0-based) → Excel列名（K..AO）配列を作成 */
-  private buildHeaders(startCol: number, endCol: number): string[] {
-    const toColName = (c: number) => {
-      let s = '';
-      c++; // 1-based
-      while (c > 0) {
-        const m = (c - 1) % 26;
-        s = String.fromCharCode(65 + m) + s;
-        c = Math.floor((c - 1) / 26);
-      }
-      return s;
-    };
-    const headers: string[] = [];
-    for (let c = startCol; c <= endCol; c++) headers.push(toColName(c));
-    return headers;
-  }
-
-
-/*
- * 1次元 or 2次元の配列を「number[][]」へ正規化する
- * 1次元なら [arr] に包んで2次元化。中の要素は toNumberOrZero で数値化
- */
-private to2DNumberMatrix(input: (number | string | null)[] | (number | string | null)[][]): number[][] {
-  const toNum = (v: number | string | null): number => this.toNumberOrZero(v);
-
-  if (Array.isArray(input) && Array.isArray(input[0])) {
-    // すでに2次元
-    const twoD = input as (number | string | null)[][];
-    return twoD.map(row => row.map(toNum));
-  } else {
-    // 1次元 → 2次元に包む
-    const oneD = input as (number | string | null)[];
-    return [oneD.map(toNum)];
-  }
-}
-
-/* 文字列/数値/null を number へ安全に変換（既存のものを想定）* 
- * 数値化できない場合は 0*/
-private toNumberOrZero(v: number | string | null | undefined): number {
-  if (typeof v === 'number') return isFinite(v) ? v : 0;
-  if (typeof v === 'string') {
-    const n = Number(v.replace(/[, ]/g, '')); // カンマ除去など
-    return isFinite(n) ? n : 0;
-  }
-  return 0;
-}
-
-private toStringSafe(v: unknown): string {
-  return v == null ? '' : String(v);
-}
-
-
   /** 送信ペイロード作成＆POST */
   sendToBackend() {
     // データ抜け確認処理
@@ -250,6 +248,11 @@ private toStringSafe(v: unknown): string {
 
     // 万一、どちらにも該当しない場合
     this.messageService.add({key: 'plan', severity: 'warn', summary: 'Warning', detail: 'カテゴリ（鍛造/切削）が判定できません。' });
+  }
+
+  // 先月の生産計画を別テーブルへコピー
+  copyPastPlan(){
+    
   }
 
 }

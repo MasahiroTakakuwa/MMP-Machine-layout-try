@@ -1,4 +1,4 @@
-import { Component, OnInit, OnDestroy,ViewChild,ViewChildren,QueryList, ChangeDetectorRef } from "@angular/core";
+import { Component, ChangeDetectorRef, HostListener, OnInit, OnDestroy,ViewChild,ViewChildren,QueryList,  } from "@angular/core";
 import { ActivatedRoute } from "@angular/router";
 import { CommonModule } from "@angular/common";
 import { FormsModule } from "@angular/forms";
@@ -339,7 +339,7 @@ export class UtilitySchedulerComponent implements OnInit, OnDestroy {
             this.updateChartGroups(desiredCount);
 
             // 3) 高さ計算（Pattern1 は分割、Pattern2 は 1 つ = 1650）
-            this.chartHeight = Math.floor(this.totalChartAreaHeight / desiredCount);
+            // this.chartHeight = Math.floor(this.totalChartAreaHeight / desiredCount);
             
             // 4) Data/Options の生成（既存ロジックを踏襲）
             const data = this.usePattern1 ? this.buildDataPattern1() : this.buildDataPattern2();
@@ -644,6 +644,7 @@ export class UtilitySchedulerComponent implements OnInit, OnDestroy {
     // ビュー初期設定後処理
     ngAfterViewInit() {
         this.toggleDataset(3);
+        this.updateChartHeight();
     }
 
     // ブラウザ終了時
@@ -653,28 +654,24 @@ export class UtilitySchedulerComponent implements OnInit, OnDestroy {
 
     }
 
-    // UI表示関連
-    // 工場内のライン一覧リスト読み込み
-    // loadDropdownItems(factoryCode: number) {
-    //     this.schedulerService.getLineNoSummary(factoryCode).subscribe((items: IMachinelist[]) =>
-    //     {
-    //         const dynamicItems = items.map(item => ({
-    //             name: item.parts_name+String(item.line_no)+"ライン",
-    //             code: item.header_machine
-    //         }));
-    //         // lineGroups内にそれぞれ格納(同一データ)
-    //         this.lineGroups[0].values = [...dynamicItems];
-    //         this.lineGroups[1].values = [...dynamicItems];
-    //         this.lineGroups[2].values = [...dynamicItems];
+    // p-chartのheightをウインドウサイズを基に自動調整
+    @HostListener('window:resize')
+    onResize(){
+        this.updateChartHeight();
+    }
 
-    //     });
+    updateChartHeight(){
+        const h = window.innerHeight;
+        const desiredCount = this.usePattern1 ? Math.max(1, this.pattern1ChartCount | 0) : 1;
+        if( desiredCount <= 3){
+            this.chartHeight = Math.max(200,Math.floor(h*0.23));
 
-    //     // 先頭のインデックスを固定項目に設定
-    //     this.lineGroups[0].value = null;
-    //     this.lineGroups[1].value = null;
-    //     this.lineGroups[2].value = null;
+        }
+        else{
+            this.chartHeight = Math.max(200,Math.floor(h*0.25));
+        }
         
-    // }
+    }
 
     // 品番・係別でドロップダウンを生成
     checkPartsGroups(factoryCode: number) {
@@ -712,6 +709,7 @@ export class UtilitySchedulerComponent implements OnInit, OnDestroy {
                 complete: () => this.ResetChartOptions(),
                 
             });
+        this.updateChartHeight();
     
     }
 
@@ -734,6 +732,7 @@ export class UtilitySchedulerComponent implements OnInit, OnDestroy {
             this.YaxisTitle = '[ライン]';
             this.toggleDataset();
         }
+        this.updateChartHeight();
         
     }
 

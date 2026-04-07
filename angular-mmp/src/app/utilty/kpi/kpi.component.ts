@@ -1,4 +1,4 @@
-import { Component, OnInit, OnDestroy, ViewChild } from "@angular/core";
+import { Component, OnInit, OnDestroy, ViewChild, HostListener } from "@angular/core";
 import { ActivatedRoute } from "@angular/router";
 import { CommonModule } from "@angular/common";
 import { FormsModule } from "@angular/forms";
@@ -163,81 +163,81 @@ export class UtilityKpiComponent implements OnInit,OnDestroy{
     subscription: Subscription;
 
     // 右側外部凡例のプラグイン
-        public htmlLegendPlugin = {
-            id: 'htmlLegend',
-            afterUpdate(chart: Chart, _args: any, options: HtmlLegendOptions) {
-                const { containerId, colorMap = {}, order = [], fontSize = 12, boxSize = 10 } = options || {};
-                if (!containerId) return;
-    
-                const container = document.getElementById(containerId);
-                if (!container) return;
-    
-                // 右側コンテナを空にする
-                while (container.firstChild) container.firstChild.remove();
-    
-                // 既定の凡例項目を取得
-                const items: LegendItem[] = Chart.defaults.plugins.legend.labels.generateLabels(chart);
-    
-                // 色適用
-                items.forEach((item) => {
-                const text = item.text ?? '';
-                const color = colorMap[text] ?? '#666';
-                item.fillStyle = color;
-                item.strokeStyle = color;
-                item.lineWidth = 0;
-                });
-    
-                // 並び順（指定があれば適用）
-                if (order.length) {
-                const orderIndex = new Map(order.map((k, i) => [k, i]));
-                items.sort((a, b) => {
-                    const ai = orderIndex.get(a.text ?? '') ?? Number.MAX_SAFE_INTEGER;
-                    const bi = orderIndex.get(b.text ?? '') ?? Number.MAX_SAFE_INTEGER;
-                    return ai - bi;
-                });
-                }
-    
-                // HTML生成（クリックで表示/非表示トグルの既定挙動を再現）
-                items.forEach((item) => {
-                const li = document.createElement('div');
-                li.className = 'legend-item';
-                li.style.display = 'flex';
-                li.style.alignItems = 'center';
-                li.style.gap = '6px';
-                li.style.whiteSpace = 'nowrap';
-                li.style.fontSize = `${fontSize}px`;
-                li.style.cursor = 'pointer';
-    
-                const swatch = document.createElement('span');
-                swatch.className = 'legend-swatch';
-                swatch.style.width = `${boxSize}px`;
-                swatch.style.height = `${boxSize}px`;
-                swatch.style.borderRadius = '2px';
-                swatch.style.background = (item.fillStyle as string) || '#666';
-    
-                const label = document.createElement('span');
-                label.textContent = item.text ?? '';
-    
-                // クリックで可視/不可視を切替
-                // li.onclick = () => {
-                //     const type = chart.config.type;
-                //     if (type === 'pie' || type === 'doughnut') {
-                //     chart.toggleDataVisibility(item.index!);
-                //     } else {
-                //     const dsMeta = chart.getDatasetMeta(item.datasetIndex!);
-                //     dsMeta.hidden = dsMeta.hidden === null
-                //         ? !chart.data.datasets[item.datasetIndex!].hidden
-                //         : null;
-                //     }
-                //     chart.update();
-                // };
-    
-                li.appendChild(swatch);
-                li.appendChild(label);
-                container.appendChild(li);
-                });
-            },
-        };
+    public htmlLegendPlugin = {
+        id: 'htmlLegend',
+        afterUpdate(chart: Chart, _args: any, options: HtmlLegendOptions) {
+            const { containerId, colorMap = {}, order = [], fontSize = 12, boxSize = 10 } = options || {};
+            if (!containerId) return;
+
+            const container = document.getElementById(containerId);
+            if (!container) return;
+
+            // 右側コンテナを空にする
+            while (container.firstChild) container.firstChild.remove();
+
+            // 既定の凡例項目を取得
+            const items: LegendItem[] = Chart.defaults.plugins.legend.labels.generateLabels(chart);
+
+            // 色適用
+            items.forEach((item) => {
+            const text = item.text ?? '';
+            const color = colorMap[text] ?? '#666';
+            item.fillStyle = color;
+            item.strokeStyle = color;
+            item.lineWidth = 0;
+            });
+
+            // 並び順（指定があれば適用）
+            if (order.length) {
+            const orderIndex = new Map(order.map((k, i) => [k, i]));
+            items.sort((a, b) => {
+                const ai = orderIndex.get(a.text ?? '') ?? Number.MAX_SAFE_INTEGER;
+                const bi = orderIndex.get(b.text ?? '') ?? Number.MAX_SAFE_INTEGER;
+                return ai - bi;
+            });
+            }
+
+            // HTML生成（クリックで表示/非表示トグルの既定挙動を再現）
+            items.forEach((item) => {
+            const li = document.createElement('div');
+            li.className = 'legend-item';
+            li.style.display = 'flex';
+            li.style.alignItems = 'center';
+            li.style.gap = '6px';
+            li.style.whiteSpace = 'nowrap';
+            li.style.fontSize = `${fontSize}px`;
+            li.style.cursor = 'pointer';
+
+            const swatch = document.createElement('span');
+            swatch.className = 'legend-swatch';
+            swatch.style.width = `${boxSize}px`;
+            swatch.style.height = `${boxSize}px`;
+            swatch.style.borderRadius = '2px';
+            swatch.style.background = (item.fillStyle as string) || '#666';
+
+            const label = document.createElement('span');
+            label.textContent = item.text ?? '';
+
+            // クリックで可視/不可視を切替
+            // li.onclick = () => {
+            //     const type = chart.config.type;
+            //     if (type === 'pie' || type === 'doughnut') {
+            //     chart.toggleDataVisibility(item.index!);
+            //     } else {
+            //     const dsMeta = chart.getDatasetMeta(item.datasetIndex!);
+            //     dsMeta.hidden = dsMeta.hidden === null
+            //         ? !chart.data.datasets[item.datasetIndex!].hidden
+            //         : null;
+            //     }
+            //     chart.update();
+            // };
+
+            li.appendChild(swatch);
+            li.appendChild(label);
+            container.appendChild(li);
+            });
+        },
+    };
 
     constructor(
         private route: ActivatedRoute,
@@ -327,6 +327,7 @@ export class UtilityKpiComponent implements OnInit,OnDestroy{
     // ビュー初期設定後処理
     ngAfterViewInit() {
         this.initCharts();
+        this.updateChartHeight();
     }
 
     // ブラウザ終了時
@@ -335,6 +336,17 @@ export class UtilityKpiComponent implements OnInit,OnDestroy{
         this.destroy$.complete();
     }
 
+    // p-chartのheightをウインドウサイズを基に自動調整
+    @HostListener('window:resize')
+    onResize(){
+        this.updateChartHeight();
+    }
+
+    updateChartHeight(){
+        const h = window.innerHeight;
+        this.chartHeight = Math.max(200,Math.floor(h*0.23));
+    }
+    // ここまで
     // UI表示関連
     // 品番リスト読み込み
     loadDropdownItems(factoryCode: number,typeNumber: number) {

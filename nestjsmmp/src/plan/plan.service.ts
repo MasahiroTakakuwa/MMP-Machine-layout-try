@@ -1,8 +1,10 @@
 import { Injectable } from "@nestjs/common";
 import { DataSource, DataTypeNotSupportedError, EntityManager, In, Repository } from "typeorm";
 import { ForgingProductPlan } from "./models/forging-product-plan.entity";
+import { ForgingPastPlan } from "./models/forging-product-plan-history.entity";
 import { ForgingUploadDto } from "./models/plan-upload.dto";
 import { MachiningProductPlan } from "./models/machining-product-plan";
+import { MachiningPastPlan } from "./models/machining-product-plan-history.entity";
 import { MachiningUploadDto } from "./models/plan-upload.dto";
 import { Formar } from "./models/factory-formar.entity";
 import { InjectRepository } from "@nestjs/typeorm";
@@ -40,8 +42,12 @@ export class PlanService {
     private entityManager: EntityManager,
     @InjectRepository(ForgingProductPlan)
     private readonly forgingRepo: Repository<ForgingProductPlan>,
-    // @InjectRepository(MachiningProductPlan)
-    // private readonly machiningRepo: Repository<MachiningProductPlan>,
+    @InjectRepository(ForgingPastPlan)
+    private readonly forgingpastRepo: Repository<ForgingPastPlan>,
+    @InjectRepository(MachiningProductPlan)
+    private readonly machiningRepo: Repository<MachiningProductPlan>,
+    @InjectRepository(MachiningPastPlan)
+    private readonly machiningpastRepo: Repository<MachiningPastPlan>,
     @InjectRepository(Formar)
     private readonly formarRepo: Repository<Formar>,
     private readonly dataSource: DataSource,
@@ -54,8 +60,6 @@ export class PlanService {
     const rowsToInsert = [];                      // バルクインサート用の空配列
     // 1)テーブルデータの初期化
     await this.dataSource.query(`TRUNCATE TABLE forging_product_plan`);
-    // console.log(`Table TRUNCATE`);
-
     // 2)各行をループして処理（DB保存・集計など）
     for (const row of rows) {
       const raw_equipmentName = row.equipmentName ?? ''; // '' or undefined
@@ -184,6 +188,33 @@ export class PlanService {
       .getRawOne<{ factory_type: number }>();
 
     return row?.factory_type ?? 0;
+  }
+
+  async copyForgingPastplan(){
+    // 現在登録されている生産計画データを全件取得
+    const plans = await this.forgingRepo.find();
+    // 登録されているデータが0件の場合は何もしない
+    if(plans.length === 0){
+      return;
+    }
+    // 登録日時のデータからyearとmonthを取得
+    const baseDate = plans[0].updated_at;
+    const year = baseDate.getFullYear();
+    const month = baseDate.getMonth()+1;
+    const historyData = plans.map(plan => {
+      return {
+        factory_type: plan.factory_type,
+        parts_no: plan.parts_no,
+        machine_name: plan.machine_name,
+        day: plan.day,
+        target_prod: plan.target_prod,
+        year,
+        month,
+      };
+    });
+    // 履歴データの重複回避のため、事前に削除してからコピーを実施
+    await this.forgingpastRepo.delete({year,month});
+    await this.forgingpastRepo.insert(historyData);
   }
 
 }

@@ -29,12 +29,9 @@
                     <p-button label="更新" (onClick)="displayCharts()"></p-button>
                     
                 </div>
-           </div>
-        </div>
-    </div>
-    <!-- グラフエリア -->
-    <div class="col-span-12 xl:col-span-12">
-        <div class="card flex flex-col gap-6 w-full" style="min-height: 0; overflow: auto;">
+            </div>
+            <!--  チャート高さ自動調整検証-->
+            <div class="card flex flex-col gap-6 w-full" style="min-height: 0; overflow: auto;">
             <!-- 行全体の高さをここで設定 -->
             <div class="flex flex-col md:flex-row gap-6">
                 <div class="flex flex-wrap gap-2 w-full" style="min-height: 0;">
@@ -103,6 +100,8 @@
                 </div>
             </div>
         </div>
+            <!-- ここまで -->
+        </div>
     </div>
     <!-- ここまで -->
 </p-fluid>
@@ -115,3 +114,64 @@
 
 <div class="font-semibold text-2xl mb-2">不良率 [%]</div>
 <p-chart type="bar" [data]="DefectRateData" [options]="DefectRateOptions" [height]="chartHeight+'px'" [style.height.px]="chartHeight"></p-chart> -->
+
+<!-- <div class="col-span-12 xl:col-span-12">
+        <div class="card flex flex-col gap-6 w-full" style="min-height: 0; overflow: auto;">
+            <div class="flex flex-col md:flex-row gap-6">
+                <div class="flex flex-wrap gap-2 w-full" style="min-height: 0;">
+                    <div class="kpi-chart" style="min-width: 0; width: 100%;">
+                        <div class="flex items-end justify-between mb-2">
+                            <div class="font-semibold text-2xl">
+                                生産実績 [個]
+                            </div>
+                            <div class="flex gap-4 items-end">
+                                <div class="font-semibold text-4xl judge text-right"
+                                    [class.ok]="judge === '〇'"
+                                    [class.ng]="judge === '✖'">
+                                    生産進捗：{{ judge || '-' }}
+                                </div>
+                                <div class="font-semibold text-4xl delta text-right"
+                                    [class.ok]="judge === '〇'"
+                                    [class.ng]="judge === '✖'">
+                                    計画比：{{ delta || '-' }}
+                                </div>
+                            </div>
+                        </div>
+                        <div class="chart-row">
+                            <div class="chart-canvas">
+                                <p-chart type="bar" [data]="ProdChartData" [options]="ProdChartOptions" 
+                                                    [height]="chartHeight+'px'" [style.height.px]="chartHeight"
+                                                    [plugins]="[htmlLegendPlugin]">
+                                </p-chart>
+                            </div>
+                            
+                            <div class="chart-legend" [id]="'product-legend'"></div>
+                        </div>
+                        <div class="font-semibold text-2xl mb-2">稼働率 [%]</div>
+                        <div class="chart-row">
+                            
+                            <div class="chart-canvas">
+                                <p-chart type="bar" [data]="OperatingRateData" [options]="OperatingRateOptions"
+                                                    [height]="chartHeight+'px'" [style.height.px]="chartHeight"
+                                                    [plugins]="[htmlLegendPlugin]">
+                                </p-chart>
+                            </div>
+                            
+                            <div class="chart-legend" [id]="'operating-legend'"></div>
+                        </div>
+
+                        <div class="font-semibold text-2xl mb-2">不良率 [%]</div>
+                        <div class="chart-row">
+                            <div class="chart-canvas">
+                                <p-chart type="bar" [data]="DefectRateData" [options]="DefectRateOptions"
+                                                    [height]="chartHeight+'px'" [style.height.px]="chartHeight"
+                                                    [plugins]="[htmlLegendPlugin]">
+                                </p-chart>
+                            </div>
+                            <div class="chart-legend" [id]="'defect-legend'"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div> -->

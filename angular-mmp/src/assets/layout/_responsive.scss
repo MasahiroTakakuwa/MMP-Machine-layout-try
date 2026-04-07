@@ -2,9 +2,16 @@
     .layout-main,
     .landing-wrapper {
         // width: 1504px;
-        width: 85%;
-        margin-left: auto !important;
-        margin-right: auto !important;
+        // 26.04.01　一時コメントアウト
+        // width: 85%;
+        // margin-left: auto !important;
+        // margin-right: auto !important;
+        // ここまで
+        // 拡大モニタ余白問題
+        width: 100% !important;
+        margin-left: 0 !important;
+        margin-right: 0 !important;
+
     }
 }
 

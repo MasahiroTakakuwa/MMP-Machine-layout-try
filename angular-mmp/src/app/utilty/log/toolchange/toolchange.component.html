@@ -43,9 +43,11 @@
             <!-- チャートグラフ(トグルボタンで表示/非表示切替) -->
             <div *ngIf="switchValue" class="chart-title">使用割合 [%]</div>
             <p-chart
+            #chart
             *ngIf="switchValue"
             [data]="chartData"
-            [options]="chartOptions">
+            [options]="chartOptions"
+            (onLegendClick)="filterTableByChart(chart.chart)">
             </p-chart>
             <div class ="toolchange-page-table">
             <!-- テーブルデータ  [value]="rows" -->

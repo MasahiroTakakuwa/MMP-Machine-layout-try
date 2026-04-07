@@ -1,9 +1,9 @@
-import { Component, OnInit, OnDestroy, ChangeDetectorRef } from "@angular/core";
+import { Component, OnInit, OnDestroy, ChangeDetectorRef,ViewChild } from "@angular/core";
 import { ActivatedRoute } from "@angular/router";
 import { CommonModule } from "@angular/common";
 import { FormsModule } from "@angular/forms";
 import { ButtonModule } from "primeng/button";
-import { ChartModule} from "primeng/chart";
+import { ChartModule, UIChart} from "primeng/chart";
 import { CheckboxModule } from "primeng/checkbox";
 import { DatePicker } from "primeng/datepicker";
 import { DropdownModule } from "primeng/dropdown";
@@ -17,7 +17,7 @@ import { Dropdownitem, PartsList } from "../../../interface/ui";
 import { ToolChangeRow,ToolChangeColumn,ToolChangePlotData } from "../../../interface/toolchange";
 import { getFirstDayOfCurrentMonthInJST,getRangeForMySQL,setDynamicTimeScale } from "../../../shared/utils";
 import 'chartjs-adapter-date-fns';
-import { Chart } from "chart.js";
+// import { Chart } from "chart.js";
 
 @Component({
     selector: 'app-utility-toolchange',
@@ -29,6 +29,7 @@ import { Chart } from "chart.js";
 
 export class UtilityToolChangeComponent implements OnInit,OnDestroy{
 
+    @ViewChild('chart') chartComponent!: UIChart;
     private destroy$ = new Subject<void>();
     checked = false;
     private checked$ = new BehaviorSubject<boolean>(false);
@@ -120,6 +121,7 @@ export class UtilityToolChangeComponent implements OnInit,OnDestroy{
 
     // チャートグラフ凡例連動
     filteredRows: any[]=[];
+    filteredOriginal: any[]=[];
 
     // チャートグラフ関連
     chartData: any;
@@ -299,12 +301,28 @@ export class UtilityToolChangeComponent implements OnInit,OnDestroy{
     }
 
     // 短命理由を上書き保存
-    updateTable(){
-        this.updateCauses();
+    updateTable() {
+        const chart = this.chartComponent?.chart;
+        // チャートが表示されていない場合は全凡例表示として実行
+        if (!chart) {
+        // alert('チャートが未生成です');
+            this.updateCauses();
+        return;
+        }
+        // 凡例非表示の件数をカウントして処理を分岐
+        const hiddenCount = chart.data.datasets
+            .filter((ds: any) => ds.hidden).length;
+        if (hiddenCount === 0) {
+            this.updateCauses();
+        }
+        else {
+            this.filterUpdateCauses();
+        }
 
     }
 
-    // ドロップダウンで選択した変更内容を上書き
+
+    // ドロップダウンで選択した変更内容を上書き(全凡例表示)
     updateCauses() {
         // 比較用データ未入力のブロック
         if (!this.originalRows || this.originalRows.length === 0) {
@@ -324,36 +342,37 @@ export class UtilityToolChangeComponent implements OnInit,OnDestroy{
             return orig && row.cause !== orig.cause;
         });
 
-    // 確認用コード
-    // console.log("=== UPDATE 対象データ確認 ===");
-    // changed.forEach(row => {
-    //     const orig = this.originalRows.find(o => o.id === row.id);
-    //     console.log({
-    //         id: row.id,
-    //         newCause: row.cause,
-    //         oldCause: orig?.cause,
-    //         otherCause: row.otherCause
-    //     });
-    // });
-    // console.log("=== END ===");
-    // ここまで
+        // 確認用コード
+        console.log("=== UPDATE 対象データ確認 ===");
+        changed.forEach(row => {
+            const orig = this.originalRows.find(o => o.id === row.id);
+            console.log({
+                id: row.id,
+                newCause: row.cause,
+                oldCause: orig?.cause,
+                otherCause: row.otherCause
+            });
+        });
+        console.log("=== END ===");
+        // ここまで
         
         if (changed.length === 0) {
             alert('変更はありません');
             return;
         }
 
-        this.toolchangeService.updateCause(changed).subscribe({
-            next:() => {        
-            },
-            error:(err) => {
-                alert('更新中にエラーが発生');
-            },
-            complete:() => {
-                alert('更新完了');
-                this.displayTable();
-            }   
-        });
+        // this.toolchangeService.updateCause(changed).subscribe({
+        //     next:() => {        
+        //     },
+        //     error:(err) => {
+        //         alert('更新中にエラーが発生');
+        //     },
+        //     complete:() => {
+        //         alert('更新完了');
+        //         this.displayTable();
+        //     }   
+        // });
+        this.rows.forEach(row => (row.otherCause =''));
 
     }
 
@@ -362,10 +381,71 @@ export class UtilityToolChangeComponent implements OnInit,OnDestroy{
         const hiddenLabels = chart.data.datasets
                              .filter((ds:any) => ds.hidden)
                              .map((ds:any) => ds.label);
-        this.filteredRows = this.originalRows.filter(row => {
+        this.filteredRows = this.rows.filter(row => {
             return !hiddenLabels.includes(row.tool_no);
         });
         
+        this.filteredOriginal = this.originalRows
+                .filter(row => !hiddenLabels.includes(row.tool_no))
+                .map(row => ({
+                    ...row,
+                    editing: row.cause === '' || row.cause === null
+                }));
+        
+    }
+
+    // ドロップダウンで選択した変更内容を上書き(非表示の凡例あり)
+    filterUpdateCauses() {
+        // 比較用データ未入力のブロック(filteredRow)
+        if (!this.filteredOriginal || this.filteredOriginal.length === 0) {
+                alert('比較用データが未取得です');
+                return;
+        }
+        // その他を選択した際の入力内容を反映。
+        this.rows.forEach(row => {
+            if (row.cause === 'その他') {
+                row.cause = row.otherCause ?? '';   // 入力値を cause に上書き
+            }
+            
+        });
+
+        const changed = this.rows.filter(row => {
+            const orig = this.filteredOriginal.find(o => o.id === row.id);
+            return orig && row.cause !== orig.cause;
+        });
+
+        // 確認用コード
+        // console.log("=== UPDATE 対象データ確認 ===");
+        // changed.forEach(row => {
+        //     const orig = this.filteredOriginal.find(o => o.id === row.id);
+        //     console.log({
+        //         id: row.id,
+        //         newCause: row.cause,
+        //         oldCause: orig?.cause,
+        //         otherCause: row.otherCause
+        //     });
+        // });
+        // console.log("=== END ===");
+        // ここまで
+        
+        if (changed.length === 0) {
+            alert('変更はありません');
+            return;
+        }
+
+        // this.toolchangeService.updateCause(changed).subscribe({
+        //     next:() => {        
+        //     },
+        //     error:(err) => {
+        //         alert('更新中にエラーが発生');
+        //     },
+        //     complete:() => {
+        //         alert('更新完了');
+        //         this.displayTable();
+        //     }   
+        // });
+        this.rows.forEach(row => (row.otherCause =''));
+
     }
 
     // チャートグラフデータ
