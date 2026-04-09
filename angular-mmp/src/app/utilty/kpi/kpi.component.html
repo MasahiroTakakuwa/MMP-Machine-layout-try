@@ -25,7 +25,9 @@
                     <div class="font-semibold text-2xl">計画更新:{{updated_plan | date:'yyyy/MM/dd'}}</div>
  
                     <div class="font-semibold text-2xl">最新生産:{{updated_prod | date:'yyyy/MM/dd'}}</div>
-                
+                    
+                    <ion-button (click)="openYearMonthPicker()">年月選択</ion-button>
+
                     <p-button label="更新" (onClick)="displayCharts()"></p-button>
                     
                 </div>

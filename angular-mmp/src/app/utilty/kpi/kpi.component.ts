@@ -2,6 +2,8 @@ import { Component, OnInit, OnDestroy, ViewChild, HostListener } from "@angular/
 import { ActivatedRoute } from "@angular/router";
 import { CommonModule } from "@angular/common";
 import { FormsModule } from "@angular/forms";
+import { IonicModule } from '@ionic/angular';
+import { PickerController } from "@ionic/angular";
 import { ButtonModule } from "primeng/button";
 import { ChartModule, UIChart } from "primeng/chart";
 import { DropdownModule } from "primeng/dropdown";
@@ -142,7 +144,7 @@ Chart.register(LegendLikeTextPlugin);
     selector: 'app-utility-kpi',
     standalone:true,
     imports:[ButtonModule,CommonModule,ChartModule,DropdownModule,FormsModule,FluidModule,MessageModule,
-             ToastModule,ToggleButtonModule],
+             ToastModule,ToggleButtonModule,IonicModule],
     templateUrl: './kpi.component.html',
     styleUrl: './kpi.component.scss',
     providers:[MessageService],

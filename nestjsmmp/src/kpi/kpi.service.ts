@@ -36,7 +36,7 @@ export class KpiService {
     @InjectRepository(MachiningProductPlan)
     private readonly machiningPlanRepo: Repository<MachiningProductPlan>,
     @InjectRepository(MachiningPastPlan)
-    private readonly machiningpastRepo: Repository<MachiningPastPlan>
+    private readonly machiningpastRepo: Repository<MachiningPastPlan>,
         
   ){}
 
