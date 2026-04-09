@@ -32,13 +32,13 @@ export class KpiController {
     }
 
     // 過去の出来高を工場・品番ごとに取得
-    @Get('product')
-    getProductHistory(@Query('factory') factory: number,
-                      @Query('parts_no') parts_no: string,
-                      @Query('date') date: string
-    ){
-      return this.KpiService.getproductSummary(factory,parts_no,date)
-    }
+    // @Get('product')
+    // getProductHistory(@Query('factory') factory: number,
+    //                   @Query('parts_no') parts_no: string,
+    //                   @Query('date') date: string
+    // ){
+    //   return this.KpiService.getproductSummary(factory,parts_no,date)
+    // }
 
     // 生産計画の最終更新日を取得
     @Get('lastupdate/plan')

@@ -23,8 +23,9 @@ export class PlanController {
 
   // 過去の生産計画を別テーブルにコピー
   @Post('copy/history')
-  copy_history(){
-    this.planservice.copyForgingPastplan();
+  async copy_history(){
+    // this.planservice.copyForgingPastplan();
+    this.planservice.copyMachiningPastplan();
     return { ok: true}
   }
 

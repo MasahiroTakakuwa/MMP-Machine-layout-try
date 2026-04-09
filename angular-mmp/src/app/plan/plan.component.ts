@@ -252,6 +252,17 @@ export class PlanComponent {
 
   // 先月の生産計画を別テーブルへコピー
   copyPastPlan(){
+    // 送信先URL（必要に応じてカテゴリ別に切り替え）
+    let url = this.apiURL + '/plan/copy/history';
+    this.http.post(url,null).subscribe({
+      next: () => {
+        this.messageService.add({key: 'plan', severity: 'success', summary: 'Sent', detail: `生産計画データのコピーに成功しました`})
+      },
+      error: (err) => {
+        this.messageService.add({key: 'plan', severity: 'error', summary: 'Error', detail: `生産計画データのコピーに失敗しました: ${err?.message ?? err}` });
+      },
+
+    });
     
   }
 

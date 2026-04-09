@@ -16,6 +16,7 @@ function normalizePartNo(a: string | null | undefined): string | null{
     return a
     .replace(/\u3000/g, ' ')
     .replace(/[\r\n]+/g, '・')
+    .replace(/・{2,}/g, '・')       // ・・を・に
     .trim();
   }
 
@@ -190,6 +191,7 @@ export class PlanService {
     return row?.factory_type ?? 0;
   }
 
+  // 鍛造の生産計画を_historyテーブルにコピー
   async copyForgingPastplan(){
     // 現在登録されている生産計画データを全件取得
     const plans = await this.forgingRepo.find();
@@ -217,4 +219,30 @@ export class PlanService {
     await this.forgingpastRepo.insert(historyData);
   }
 
+  // 切削の生産計画を_historyテーブルにコピー
+  async copyMachiningPastplan(){
+    // 現在登録されている生産計画データを全件取得
+    const plans = await this.machiningRepo.find()
+    // 登録されているデータが0件の場合は何もしない
+    if(plans.length === 0){
+      return;
+    }
+    // 登録日時のデータからyearとmonthを取得
+    const baseDate = plans[0].updated_at;
+    const year = baseDate.getFullYear();
+    const month = baseDate.getMonth()+1;
+    const historyData = plans.map(plan => {
+      return{
+        factory_type: plan.factory_type,
+        parts_no: plan.parts_no,
+        total: plan.total,
+        target_prod: plan.target_prod,
+        year,
+        month,
+      }
+    });
+    // 履歴データ重複回避のため、事前に削除してコピーを実施
+    await this.machiningpastRepo.delete({year,month});
+    await this.machiningpastRepo.insert(historyData);
+  }
 }

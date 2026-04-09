@@ -1,14 +1,18 @@
-import { Entity, PrimaryColumn, Column } from 'typeorm';
+import { Entity, Unique, Column, PrimaryGeneratedColumn } from 'typeorm';
 
 @Entity('forging_product_plan')
+@Unique('UQ_parts_machine_day',['parts_no','machine_name','day'])
 export class ForgingProductPlan {
+    @PrimaryGeneratedColumn({name: 'id'})
+    id:number;
+
     @Column({name: 'factory_type'})
     factory_type: number;
 
     @Column({name: 'parts_no'})
     parts_no: string;
 
-    @PrimaryColumn({name: 'machine_name'})
+    @Column({name: 'machine_name'})
     machine_name: string;
 
     @Column({name: 'day'})

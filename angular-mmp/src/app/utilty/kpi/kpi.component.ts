@@ -2,7 +2,6 @@ import { Component, OnInit, OnDestroy, ViewChild, HostListener } from "@angular/
 import { ActivatedRoute } from "@angular/router";
 import { CommonModule } from "@angular/common";
 import { FormsModule } from "@angular/forms";
-
 import { ButtonModule } from "primeng/button";
 import { ChartModule, UIChart } from "primeng/chart";
 import { DropdownModule } from "primeng/dropdown";
@@ -11,19 +10,16 @@ import { ToastModule } from "primeng/toast";
 import { ToggleButtonModule } from "primeng/togglebutton";
 import { MessageService } from "primeng/api";
 import { MessageModule } from "primeng/message";
-
 import { debounceTime, Subscription, Subject, takeUntil } from 'rxjs';
 
 import { LayoutService } from "../../layout/service/layout.service";
 import { KpiService } from "../../services/kpi.service";
-
-import { getFirstDayOfCurrentMonthInJST, getWeekendDaysOfCurrentMonth } from "../../shared/utils";
+import { formatK,getFirstDayOfCurrentMonthInJST, getWeekendDaysOfCurrentMonth } from "../../shared/utils";
 import { averageNonZero1D, addArrays, addManyArrays } from "../../shared/utils";
-import { formatK } from "../../shared/utils";
-
-import { FactoryOption,Dropdownitem,Kpi,PartsList,LastUpdatedPlan, LastUpdatedProd } from "../../interface/ui";
+import { FactoryOption,Dropdownitem,PartsList,LastUpdatedPlan, LastUpdatedProd } from "../../interface/ui";
 import { ForgingPlanItem,ForgingProgItem,ForgingResponse } from "../../interface/forging";
 import { MachiningPlanItem,MachiningProgItem,MachiningBaseCTItem,MachiningResponse } from "../../interface/machining";
+import { HtmlLegendOptions,LegendLikeTextOptions } from "../../interface/chartoption";
 
 import Chart, {
   Chart as ChartJS,         // クラス本体
@@ -34,42 +30,42 @@ import Chart, {
  from 'chart.js/auto';
 
 //拡張後のプラグインのオプション型を定義 
-type LegendLikeTextAlign = 'left' | 'right';
-type LegendLikeTextPosition = 'top' | 'bottom';
+// type LegendLikeTextAlign = 'left' | 'right';
+// type LegendLikeTextPosition = 'top' | 'bottom';
 
-interface LegendLikeTextOptions {
-  /** 表示する行（上からの順） */
-  lines?: string[];
-  /** 文字色 */
-  color?: string;
-  /** フォント */
-  font?: {
-    size?: number;
-    weight?: string; // 'normal' | 'bold' など
-    family?: string; // 追加: 任意フォント（デフォルトは sans-serif）
-  };
-  /** 行間（px）。未指定なら size+4 */
-  lineHeight?: number;
-  /** 右寄せ/左寄せ（textAlign に反映） */
-  align?: LegendLikeTextAlign;
-  /** 上側/下側（textBaseline の初期値と積み上げ方向に影響） */
-  position?: LegendLikeTextPosition;
-  /** 余白（従来の外側配置に使う） */
-  margin?: number;
+// interface LegendLikeTextOptions {
+//   /** 表示する行（上からの順） */
+//   lines?: string[];
+//   /** 文字色 */
+//   color?: string;
+//   /** フォント */
+//   font?: {
+//     size?: number;
+//     weight?: string; // 'normal' | 'bold' など
+//     family?: string; // 追加: 任意フォント（デフォルトは sans-serif）
+//   };
+//   /** 行間（px）。未指定なら size+4 */
+//   lineHeight?: number;
+//   /** 右寄せ/左寄せ（textAlign に反映） */
+//   align?: LegendLikeTextAlign;
+//   /** 上側/下側（textBaseline の初期値と積み上げ方向に影響） */
+//   position?: LegendLikeTextPosition;
+//   /** 余白（従来の外側配置に使う） */
+//   margin?: number;
 
-  /** ★ 追加: 座標指定（キャンバスの左上原点、px） */
-  x?: number;
-  y?: number;
-}
+//   /** ★ 追加: 座標指定（キャンバスの左上原点、px） */
+//   x?: number;
+//   y?: number;
+// }
 
-// 外部凡例用オプション
-interface HtmlLegendOptions {
-  containerId: string;                    // 右側凡例のDOMコンテナID
-  colorMap?: Record<string, string>;      // ラベル -> 色
-  order?: string[];                       // 表示順（先頭が上に）
-  fontSize?: number;                      // 凡例ラベルのフォントサイズ（px）
-  boxSize?: number;                       // カラースウォッチの一辺（px）
-}
+// // 外部凡例用オプション
+// interface HtmlLegendOptions {
+//   containerId: string;                    // 右側凡例のDOMコンテナID
+//   colorMap?: Record<string, string>;      // ラベル -> 色
+//   order?: string[];                       // 表示順（先頭が上に）
+//   fontSize?: number;                      // 凡例ラベルのフォントサイズ（px）
+//   boxSize?: number;                       // カラースウォッチの一辺（px）
+// }
 
 // --- Chart.js へプラグインオプションを「認識」させる（モジュール拡張） ---
 declare module 'chart.js' {
@@ -432,8 +428,6 @@ export class UtilityKpiComponent implements OnInit,OnDestroy{
 
     // 品番選択後
     onPartsNoSelect() {
-        // const index = this.partslistValues.findIndex(x => x.code === this.partslistValue?.code);
-        // console.log('index:',index);
         if (this.partslistValue && this.partslistValue.code !== undefined) {
             this.loadMachineListItems(this.factoryNo, this.partslistValue.code);
         }
@@ -441,7 +435,6 @@ export class UtilityKpiComponent implements OnInit,OnDestroy{
     }
     // 品名選択後
     onPartsNameSelect() {
-        // const index
         if (this.partslistValue && this.partslistValue.code !== undefined) {
             this.loadMachineListItems(this.factoryNo, this.partslistValue.code);
         }
@@ -930,7 +923,6 @@ export class UtilityKpiComponent implements OnInit,OnDestroy{
                     progByDay[day-1] = this.machiningprogs[n].good_prod;       // 良品数
                     planByDay[day-1] = planPerline;     // 生産指示数
                     // 工程内不良は以下の部分に処理を追加
-                    // progPerplan[day-1] =(progByDay[day-1]/planByDay[day-1])*100;  // 可動率
                     progPerplan[day-1] =(progByDay[day-1]/baseByDay[day-1])*100;  // 稼働率
                     targetPerplan[day-1] = 85;                                    // 目標可動率
                     inlinedefByDay[day-1] = (this.machiningprogs[n].inline_defect/this.machiningprogs[n].good_prod)*100;      // 工程内不良
