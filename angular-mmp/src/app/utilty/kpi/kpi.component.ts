@@ -2,10 +2,9 @@ import { Component, OnInit, OnDestroy, ViewChild, HostListener } from "@angular/
 import { ActivatedRoute } from "@angular/router";
 import { CommonModule } from "@angular/common";
 import { FormsModule } from "@angular/forms";
-import { IonicModule } from '@ionic/angular';
-import { PickerController } from "@ionic/angular";
 import { ButtonModule } from "primeng/button";
 import { ChartModule, UIChart } from "primeng/chart";
+import { DatePicker } from "primeng/datepicker";
 import { DropdownModule } from "primeng/dropdown";
 import { FluidModule } from "primeng/fluid";
 import { ToastModule } from "primeng/toast";
@@ -19,8 +18,8 @@ import { KpiService } from "../../services/kpi.service";
 import { formatK,getFirstDayOfCurrentMonthInJST, getWeekendDaysOfCurrentMonth } from "../../shared/utils";
 import { averageNonZero1D, addArrays, addManyArrays } from "../../shared/utils";
 import { FactoryOption,Dropdownitem,PartsList,LastUpdatedPlan, LastUpdatedProd } from "../../interface/ui";
-import { ForgingPlanItem,ForgingProgItem,ForgingResponse } from "../../interface/forging";
-import { MachiningPlanItem,MachiningProgItem,MachiningBaseCTItem,MachiningResponse } from "../../interface/machining";
+import { ForgingPlanItem,ForgingProgItem,ForgingProdItems,ForgingResponse,ForgingPastResponse } from "../../interface/forging";
+import { MachiningPlanItem,MachiningProgItem,MachiningProgItems,MachiningPastResponse,MachiningBaseCTItem,MachiningResponse } from "../../interface/machining";
 import { HtmlLegendOptions,LegendLikeTextOptions } from "../../interface/chartoption";
 
 import Chart, {
@@ -30,45 +29,6 @@ import Chart, {
   LegendItem
 }
  from 'chart.js/auto';
-
-//拡張後のプラグインのオプション型を定義 
-// type LegendLikeTextAlign = 'left' | 'right';
-// type LegendLikeTextPosition = 'top' | 'bottom';
-
-// interface LegendLikeTextOptions {
-//   /** 表示する行（上からの順） */
-//   lines?: string[];
-//   /** 文字色 */
-//   color?: string;
-//   /** フォント */
-//   font?: {
-//     size?: number;
-//     weight?: string; // 'normal' | 'bold' など
-//     family?: string; // 追加: 任意フォント（デフォルトは sans-serif）
-//   };
-//   /** 行間（px）。未指定なら size+4 */
-//   lineHeight?: number;
-//   /** 右寄せ/左寄せ（textAlign に反映） */
-//   align?: LegendLikeTextAlign;
-//   /** 上側/下側（textBaseline の初期値と積み上げ方向に影響） */
-//   position?: LegendLikeTextPosition;
-//   /** 余白（従来の外側配置に使う） */
-//   margin?: number;
-
-//   /** ★ 追加: 座標指定（キャンバスの左上原点、px） */
-//   x?: number;
-//   y?: number;
-// }
-
-// // 外部凡例用オプション
-// interface HtmlLegendOptions {
-//   containerId: string;                    // 右側凡例のDOMコンテナID
-//   colorMap?: Record<string, string>;      // ラベル -> 色
-//   order?: string[];                       // 表示順（先頭が上に）
-//   fontSize?: number;                      // 凡例ラベルのフォントサイズ（px）
-//   boxSize?: number;                       // カラースウォッチの一辺（px）
-// }
-
 // --- Chart.js へプラグインオプションを「認識」させる（モジュール拡張） ---
 declare module 'chart.js' {
   // すべてのチャートタイプ(TType)に対して legendLikeText オプションを追加
@@ -143,8 +103,8 @@ Chart.register(LegendLikeTextPlugin);
 @Component({
     selector: 'app-utility-kpi',
     standalone:true,
-    imports:[ButtonModule,CommonModule,ChartModule,DropdownModule,FormsModule,FluidModule,MessageModule,
-             ToastModule,ToggleButtonModule,IonicModule],
+    imports:[ButtonModule,CommonModule,ChartModule,DatePicker,DropdownModule,FormsModule,FluidModule,MessageModule,
+             ToastModule,ToggleButtonModule],
     templateUrl: './kpi.component.html',
     styleUrl: './kpi.component.scss',
     providers:[MessageService],
@@ -159,6 +119,8 @@ export class UtilityKpiComponent implements OnInit,OnDestroy{
     factory = '';
     type = '';
     subscription: Subscription;
+    selectedDate!: Date;
+    maxDate!: Date;
 
     // 右側外部凡例のプラグイン
     public htmlLegendPlugin = {
@@ -241,7 +203,7 @@ export class UtilityKpiComponent implements OnInit,OnDestroy{
         private route: ActivatedRoute,
         private layoutService: LayoutService,
         private kpiService: KpiService,
-        private messageService: MessageService
+        private messageService: MessageService,
         ) {
         // ページのルートパラメータが変わるたびに更新する様に設定。
         this.route.paramMap.subscribe(params => {
@@ -274,9 +236,11 @@ export class UtilityKpiComponent implements OnInit,OnDestroy{
     // 鍛造生産計画・進捗データ格納
     formarplans: ForgingPlanItem[] = [];
     formarprogs: ForgingProgItem[] = [];
+    formarpasts: ForgingProdItems[] = [];
     // 切削生産計画・進捗データ格納
     machiningplans: MachiningPlanItem[] = [];
     machiningprogs: MachiningProgItem[] = [];
+    machiningpasts: MachiningProgItems[] = [];
     machiningbaseCTs: MachiningBaseCTItem[] = [];
     weekendDays: number[] = [];     // 休日の日付を格納用
     // 生産勝ち負け表示
@@ -307,6 +271,39 @@ export class UtilityKpiComponent implements OnInit,OnDestroy{
     DefectSum: number[] = [];
     DefectAve: number | null=null;
 
+    // リール表示検証
+    get year(): number {
+    return this.selectedDate?.getFullYear();
+    }
+
+    get month(): number {
+    return this.selectedDate ? this.selectedDate.getMonth() + 1 : 0;
+    }
+
+    onCheckYearMonth(){
+        // 現在の年月を取得
+        const now = new Date();
+        const Year = now.getFullYear();
+        const Month = now.getMonth() + 1;
+        const ym = Year*100+Month;
+        // 宣言した年月を取得
+        const selyear = this.year;
+        const selmonth = this.month;
+        const selym = selyear*100+selmonth;
+        // 以下KPI参照先変更トライの処理検証
+        // 当月
+        if(ym === selym){
+            this.displayCharts();
+        }
+        // 過去
+        else{
+            this.displayChartsPast(selym);
+        }
+
+        // ここまで
+    }
+    // ここまで
+
     // ブラウザ立上げ時
     ngOnInit(){
         this.route.paramMap.subscribe(params => {
@@ -317,7 +314,18 @@ export class UtilityKpiComponent implements OnInit,OnDestroy{
             this.loadDropdownItems(this.factoryNo,this.typeNum);
             this.initCharts();
             this.loadLastupdated();
-            
+
+            const now = new Date();
+            this.selectedDate = new Date(
+                now.getFullYear(),
+                now.getMonth(),
+                1
+            );
+
+            this.maxDate = new Date(
+                now.getFullYear(),
+                now.getMonth()+1,0
+            );
         });
         
     }
@@ -359,7 +367,7 @@ export class UtilityKpiComponent implements OnInit,OnDestroy{
                     code: item.parts_no
                 }));
                 this.partslistValues = [fixedItem, ...dynamicItems];
-                console.table(this.partslistValues);
+                
             });
 
         }
@@ -971,6 +979,203 @@ export class UtilityKpiComponent implements OnInit,OnDestroy{
 
     }
 
+    // 過去データのグラフ描画
+    displayChartsPast(yearMonth: number){
+        // UIに入力されているデータを格納
+        const factory = this.factoryNo | 0;
+        const machine = this.machinelistValue?.code;        // 設備
+        const date = getFirstDayOfCurrentMonthInJST();      // 今月1日をstring型で生成
+        let parts = this.partslistValue?.code;              // 品番
+        // 切削の場合、あいまい検索用に品番を成形
+        // 末尾の'-1'を削除
+        if(this.typeNum == 1 && parts?.endsWith('-1')){
+            parts = parts.slice(0,-2);
+        }
+        // 末尾の'ＣＫＤ'を削除
+        if(this.typeNum == 1 && parts?.endsWith('CKD')){
+            parts = parts.slice(0,-3);
+        }
+        let daycount = 0;       // 稼働日数(生産進捗表示に使用)
+        let PlanTotal = 0;      // 累積計画
+        let ProgTotal = 0;      // 累積良品
+
+        // グラフ用データの格納先(1日から31日で固定)
+        const progByDay: number[] = new Array(31).fill(0);      //生産実績
+        const progPerplan: number[] = new Array(31).fill(0);    //可動率
+        const targetPerplan: number[] = new Array(31).fill(0);  //目標可動率
+        const inlinedefByDay: number[] = new Array(31).fill(0); //工程内不良
+        const visualdefByDay: number[] = new Array(31).fill(0); //外観不良
+        const wastedefByDay: number[] = new Array(31).fill(0);  //捨て打ち
+        const setupdefByDay: number[] = new Array(31).fill(0);  //段取り
+        
+        this.chengeDefectLegend();                              //不良率グラフの凡例を変更
+        // 1)条件漏れ確認
+        // 工場・品番・設備の全てが選択されているか確認
+        if(factory === 0){
+            this.messageService.add({key: 'test', severity: 'warn', summary: 'Warning', detail: '工場が選択されていません。' });
+            return;
+        }
+        if(parts === undefined){
+            this.messageService.add({key: 'test', severity: 'warn', summary: 'Warning', detail: '品番が選択されていません。' });
+            return;
+        }
+        if(machine === undefined){
+            this.messageService.add({key: 'test', severity: 'warn', summary: 'Warning', detail: '設備・ラインが選択されていません。' });
+            return;
+        }
+        // 2)生産計画と生産実績を取得
+        // 鍛造
+        if(this.typeNum === 0){
+            const planByDay: number[] = new Array(31).fill(0);      //日ごと生産計画数
+            this.kpiService.getForgingPastKpi(factory, machine, yearMonth).subscribe({
+            next: (res: ForgingPastResponse) => {
+                // --- アクセス方法 ---
+                this.formarplans = Array.isArray(res.ForgingPastPlan) ? res.ForgingPastPlan : [];
+                this.formarpasts = Array.isArray(res.ForgingPastProg) ? res.ForgingPastProg : [];
+                
+                // 3)グラフ用データを生成
+                // 生産計画
+                for(let i=0;i<this.formarplans.length;i++){
+                    const index = this.formarplans[i].day;
+                    planByDay[index-1] = this.formarplans[i].target_prod;
+                    
+                }
+                // 生産実績
+                for(let n=0;n<this.formarpasts.length;n++){
+                    // 日にちをインデックスに変換
+                    const index = this.formarpasts[n].day -1;
+                    progByDay[index] = this.formarpasts[n].good_prod;       // 良品数
+                    // 工程内不良は以下の部分に処理を追加
+                    progPerplan[index] = (progByDay[index]/planByDay[index])*100 ;  // 可動率
+                    targetPerplan[index] = 85;                                      // 目標可動率
+                    inlinedefByDay[index] = (this.formarpasts[n].inline_defect/this.formarpasts[n].good_prod)*100;      // 工程内不良
+                    wastedefByDay[index] = (this.formarpasts[n].waste_prod/this.formarpasts[n].good_prod)*100;         // 捨て打ち
+                    setupdefByDay[index] = (this.formarpasts[n].setup_prod/this.formarpasts[n].good_prod)*100;         // 段取り
+                    // 鍛造の生産実績の累積を格納
+                    ProgTotal=Number(ProgTotal)+Number(this.formarpasts[n].good_prod);
+                    daycount++;
+
+                }
+                for(let m=0;m<this.formarplans.length;m++){
+                    // 鍛造の生産計画の累積を格納
+                    PlanTotal = Number(PlanTotal)+Number(this.formarplans[m].target_prod);
+                    
+                }
+
+                // データセットに値を代入。
+                this.ProdChartData.datasets[0].data = planByDay;    // 生産計画
+                this.ProdChartData.datasets[1].data = progByDay;    // 生産実績
+                
+                this.OperatingRateData.datasets[0].data = targetPerplan;  // 目標稼働率
+                this.OperatingRateData.datasets[1].data = progPerplan;    // 実績稼働率
+
+                this.DefectRateData.datasets[0].data = inlinedefByDay;  // 工程内不良
+                this.DefectRateData.datasets[1].data = wastedefByDay;   // 捨て打ち
+                this.DefectRateData.datasets[2].data = setupdefByDay;   // 段取り
+                // グラフエリアを更新
+                this.ProdChartData = { ...this.ProdChartData };
+                this.OperatingRateData = { ...this.OperatingRateData};
+                this.DefectRateData = { ...this.DefectRateData };
+
+                // 工場全体の生産進捗勝ち負け表示
+                this.displayProdResult(PlanTotal,ProgTotal);
+                
+                // 稼働率・不良率の平均値を計算(0は除外)
+                this.OperatingAve = averageNonZero1D(progPerplan);
+                this.DefectSum = addManyArrays(inlinedefByDay,wastedefByDay,setupdefByDay);
+                this.DefectAve = averageNonZero1D(this.DefectSum);
+
+            },
+            error: (err) => console.error(err),
+            });
+
+        }
+        // 切削
+        else if(this.typeNum === 1){
+            this.kpiService.getMachiningPastKPI(factory, parts, machine, yearMonth).subscribe({
+            next: (res: MachiningPastResponse) => {
+                // --- アクセス方法 ---
+                this.machiningplans = Array.isArray(res.MachiningPastPlan) ? res.MachiningPastPlan : [];
+                this.machiningpasts = Array.isArray(res.MachiningPastProg) ? res.MachiningPastProg : [];
+                this.machiningbaseCTs = Array.isArray(res.MachiningBaseCT) ? res.MachiningBaseCT : [];                
+                // グラフ用データを生成
+                // 生産計画(切削の生産計画は品番ごとのため、1ライン当たりの生産数を算出)
+                let lines = this.machinelistValues.length -1 ;    // 全ラインを除外
+                if(machine === 'all'){
+                    lines = 1;  // 全ラインが選択されている場合
+                }
+                const orderByMonth = this.machiningplans[0].total;    //月の切削指示数
+                const planPerline = Math.ceil(this.machiningplans[0].target_prod / lines);
+                let planByDay: number[] = new Array(31).fill(0);      //日ごと生産計画数
+                // 100%稼働時の生産数を基準CT+24h稼働で計算(結果はMath.floorで整数にする)
+                let prodByBaseCT = 0
+                for(let i=0;i<this.machiningbaseCTs.length;i++){
+                    prodByBaseCT += Math.floor(3600 * 24 / this.machiningbaseCTs[i].CT);
+
+                }
+                // 100%稼働時の生産数を計算
+                const baseByDay: number[] = new Array(31).fill(prodByBaseCT);
+                // 休日を除外
+                this.weekendDays = getWeekendDaysOfCurrentMonth();
+                for(let c=0;c<this.weekendDays.length;c++){
+                    const index = this.weekendDays[c];
+                    planByDay[index-1] = 0;
+                    baseByDay[index-1] = 0;
+                }
+                
+                // 生産実績
+                for(let n=0;n<this.machiningpasts.length;n++){
+                    // 日付部分をintに変換
+                    const index = this.machiningpasts[n].day -1;
+                    progByDay[index] = this.machiningpasts[n].good_prod;       // 良品数
+                    planByDay[index] = planPerline;     // 生産指示数
+                    // 工程内不良は以下の部分に処理を追加
+                    progPerplan[index] =(progByDay[index]/baseByDay[index])*100;  // 稼働率
+                    targetPerplan[index] = 85;                                    // 目標可動率
+                    inlinedefByDay[index] = (this.machiningpasts[n].inline_defect/this.machiningpasts[n].good_prod)*100;      // 工程内不良
+                    visualdefByDay[index] = (this.machiningpasts[n].visual_defect/this.machiningpasts[n].good_prod)*100;         // 外観不良(捨て打ち)            
+                    // 切削稼働日を格納
+                    daycount = daycount+1;
+                    // 生産計画と生産実績の累積を格納
+                    // Number()で囲わなかった際にstring型と認識されてしまったため、Number()を適用
+                    PlanTotal = Number(PlanTotal+planPerline);
+                    ProgTotal = Number(ProgTotal)+Number(this.machiningpasts[n].good_prod);
+                    
+                }
+                // データセットに値を代入。                
+                this.ProdChartData.datasets[0].data = planByDay;    // 生産計画
+                this.ProdChartData.datasets[1].data = progByDay;    // 生産実績
+
+                this.OperatingRateData.datasets[0].data = targetPerplan;    // 目標稼働率
+                this.OperatingRateData.datasets[1].data = progPerplan;      // 実稼働率
+                
+                this.DefectRateData.datasets[0].data = inlinedefByDay;  // 工程内不良
+                this.DefectRateData.datasets[1].data = visualdefByDay;  // 外観不良
+                // グラフエリアを更新
+                this.ProdChartData = { ...this.ProdChartData };
+                this.OperatingRateData = { ...this.OperatingRateData};
+                this.DefectRateData = { ...this.DefectRateData };
+                
+                // 切削の場合、月の生産指示数とグラフ表示される日当たり生産数の累積を比較。
+                // 生産指示数を超えた場合、月の生産指示数に値を置き換え
+                if(orderByMonth < PlanTotal){
+                    PlanTotal = orderByMonth;
+                }
+                // 工場全体の生産進捗勝ち負け表示
+                this.displayProdResult(PlanTotal,ProgTotal);
+
+                // 稼働率・不良率の平均値を計算(0は除外)
+                this.OperatingAve = averageNonZero1D(progPerplan);
+                this.DefectSum = addArrays(inlinedefByDay,visualdefByDay);
+                this.DefectAve = averageNonZero1D(this.DefectSum);
+                
+            },
+            error: (err) => console.error(err),
+            });
+        }
+
+    }
+
     // 不良率凡例変更
     chengeDefectLegend(){
         // 不良率
@@ -1044,27 +1249,6 @@ export class UtilityKpiComponent implements OnInit,OnDestroy{
             this.delta = '+' + value.toLocaleString('ja-JP');
         }
 
-        // グラフエリア内の凡例風文字列を変更
-        // const value = new Intl.NumberFormat('ja-JP').format(this.delta);
-        // const lines = [`進捗:${this.judge} 計画比:${value}`];
-        // let color;
-        // if(this.judge === '〇'){
-        //     color='#2563ecff'
-        // }
-        // else if(this.judge === '✖'){
-        //     color='#dc2626'
-        // }
-        // // オプション再生成（参照を変える）
-        // this.ProdChartOptions = {
-        //     ...this.ProdChartOptions,
-        //     plugins: {
-        //     ...this.ProdChartOptions.plugins,
-        //     legendLikeText: {
-        //         ...this.ProdChartOptions.plugins?.legendLikeText,
-        //         lines,color
-        //     }
-        //     }
-        // };
         // 反映が弱いときは refresh
         this.prodChart?.refresh();
     

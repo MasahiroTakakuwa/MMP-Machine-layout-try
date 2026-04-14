@@ -208,6 +208,26 @@ export class KpiService {
       return results;
   }
 
+  // 鍛造の過去の生産計画取得
+  async getForgingPastPlan(factory: number, machine_name: string, year_month:number){
+    const query = await this.forgingpastRepo
+      .createQueryBuilder('m')
+      .select(['m.day AS day',
+              'SUM(m.target_prod) AS target_prod'
+      ])
+      .where('m.factory_type = :factory',{factory})
+      .andWhere('m.ym_int = :year_month',{year_month})
+      .groupBy('m.day')
+      .orderBy('m.day ')
+      // 設備指定ありの場合は条件追加
+      if(machine_name !== 'all'){
+        query.andWhere('m.machine_name = :machine_name', {machine_name})
+      }
+      const results = await query.getRawMany();
+      return results;
+
+  }
+
   // 鍛造の生産実績取得
   async getForgingProgress(factory: number, parts_no: string, machine_name: string, date: string){
     const query = await this.forgingKpiRepo
@@ -222,6 +242,28 @@ export class KpiService {
       .andWhere('m.prod_date >= :date',{date})
       .groupBy('m.prod_date')
       .orderBy('m.prod_date')
+      if(machine_name !== 'all'){
+        query.andWhere('m.machine_name = :machine_name',{machine_name})
+      }
+      const results = await query.getRawMany();
+      return results;
+
+  }
+
+  // 鍛造の生産実績取得
+  async getForgingPastProgress(factory: number, machine_name: string, year_month: number){
+    const query = await this.forgingKpiRepo
+      .createQueryBuilder('m')
+      .select(['m.day AS day',
+              'SUM(m.good_prod) AS good_prod',
+              'SUM(m.waste_prod) AS waste_prod',
+              'SUM(m.setup_prod) AS setup_prod',
+              'SUM(m.inline_defect) AS inline_defect'
+      ])
+      .where('m.factory_type = :factory',{factory})
+      .andWhere('m.ym_int = :year_month',{year_month})
+      .groupBy('m.day')
+      .orderBy('m.day')
       if(machine_name !== 'all'){
         query.andWhere('m.machine_name = :machine_name',{machine_name})
       }
@@ -310,6 +352,29 @@ export class KpiService {
       
   }
 
+  // 切削の過去の生産計画取得
+  async getMachiningPastPlan(factory: number, parts_no: string, year_month: number){
+    const query = await this.machiningpastRepo
+      .createQueryBuilder('m')
+      .where('m.factory_type = :factory',{factory})
+      .andWhere('m.ym_int = :year_month',{year_month})
+      if(parts_no = 'all'){
+        query.select(['SUM(m.target_prod) AS target_prod',
+                      'SUM(m.total) AS total'
+              ])
+      }
+      else{
+        const keyword = parts_no ?? ''; // 入力文字列
+        query.select(['m.target_prod AS target_prod',
+                      'm.total AS total'
+              ])
+        query.andWhere('m.parts_no LIKE :parts_no', {parts_no: `%${keyword}%` })
+      }
+      const results = await query.getRawMany();
+      return results;
+
+  }
+
   // 切削の生産実績取得
   async getMachiningProgress(factory: number, parts_no: string, line_no: string, date: string){
     const keyword = parts_no ?? ''; // 入力文字列
@@ -333,6 +398,44 @@ export class KpiService {
     }
     else{
       query.select(['m.prod_date AS prod_date',
+            'SUM(m.good_prod) AS good_prod',
+            'SUM(m.inline_defect) AS inline_defect',
+            'SUM(m.visual_defect) AS visual_defect'
+            ])
+            .andWhere('m.machine_name != :name',{name:'N100'})
+      if(line_no === 'all'){
+        query.andWhere('m.parts_no LIKE :parts_no', {parts_no: `%${keyword}%` })
+
+      }
+
+    }
+    const results = await query.getRawMany();
+    return results;    
+  }
+
+  // 切削の生産実績取得
+  async getMachiningPastProgress(factory: number, parts_no: string, line_no: string, year_month: number){
+    const keyword = parts_no ?? ''; // 入力文字列
+    // クエリ文の共通部分を記述
+    const query = await this.machiningKpiRepo
+    .createQueryBuilder('m')
+    .where('m.factory_type = :factory',{factory})
+    .andWhere('m.ym_int = :year_month',{year_month})
+    .andWhere('m.line_no NOT LIKE :underbarZero',{underbarZero:'%\\_0'})
+    .groupBy('m.day')
+    .orderBy('m.day')
+    // 品番・設備の両方指定有りの場合
+    if(parts_no !== 'all' && line_no !== 'all'){
+      query.select(['m.day AS day',
+            'm.good_prod AS good_prod',
+            'm.inline_defect AS inline_defect',
+            'm.visual_defect AS visual_defect'
+            ])
+            .andWhere('m.parts_no LIKE :parts_no', {parts_no: `%${keyword}%` })
+            .andWhere('m.line_no = :line_no',{line_no})
+    }
+    else{
+      query.select(['m.day AS day',
             'SUM(m.good_prod) AS good_prod',
             'SUM(m.inline_defect) AS inline_defect',
             'SUM(m.visual_defect) AS visual_defect'

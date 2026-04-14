@@ -388,7 +388,12 @@ export class AppMenu {
                     }
                 ]
             },
-            //
+            // 検証用ページ
+            {
+                label: '検証用ページ',
+                items: [{ label: 'テスト', routerLink: ['/test']}]
+            },
+            // ここまで
         ];
     }
 

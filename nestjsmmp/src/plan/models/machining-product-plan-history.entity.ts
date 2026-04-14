@@ -15,6 +15,12 @@ export class MachiningPastPlan {
     @Column({ name: 'total'})
     total: number;
 
+    @Column({ name: 'target_prod'})
+    target_prod: number;
+
+    @Column({name: 'ym_int'})
+    ym_int: number;
+
     @Column({name: 'year'})
     year: number;
 

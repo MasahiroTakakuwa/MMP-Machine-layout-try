@@ -3,12 +3,13 @@ import { DataSource, DataTypeNotSupportedError, EntityManager, In, Repository } 
 import { ForgingProductPlan } from "./models/forging-product-plan.entity";
 import { ForgingPastPlan } from "./models/forging-product-plan-history.entity";
 import { ForgingUploadDto } from "./models/plan-upload.dto";
-import { MachiningProductPlan } from "./models/machining-product-plan";
+import { MachiningProductPlan } from "./models/machining-product-plan.entity";
 import { MachiningPastPlan } from "./models/machining-product-plan-history.entity";
 import { MachiningUploadDto } from "./models/plan-upload.dto";
 import { Formar } from "./models/factory-formar.entity";
 import { InjectRepository } from "@nestjs/typeorm";
 import { machine } from "os";
+import { query } from "express";
 
 function normalizePartNo(a: string | null | undefined): string | null{
     // 全角空白(U+3000)を半角に置換し、前後の空白を削除
@@ -49,6 +50,7 @@ export class PlanService {
     private readonly machiningRepo: Repository<MachiningProductPlan>,
     @InjectRepository(MachiningPastPlan)
     private readonly machiningpastRepo: Repository<MachiningPastPlan>,
+
     @InjectRepository(Formar)
     private readonly formarRepo: Repository<Formar>,
     private readonly dataSource: DataSource,
@@ -203,20 +205,36 @@ export class PlanService {
     const baseDate = plans[0].updated_at;
     const year = baseDate.getFullYear();
     const month = baseDate.getMonth()+1;
-    const historyData = plans.map(plan => {
-      return {
-        factory_type: plan.factory_type,
-        parts_no: plan.parts_no,
-        machine_name: plan.machine_name,
-        day: plan.day,
-        target_prod: plan.target_prod,
-        year,
-        month,
-      };
-    });
+    const ym_int = year *100 + month;
     // 履歴データの重複回避のため、事前に削除してからコピーを実施
     await this.forgingpastRepo.delete({year,month});
-    await this.forgingpastRepo.insert(historyData);
+
+    // バルクインサート用の配列にデータを格納
+    const tuples = plans.map(plan => {
+      const targetProd = Number(plan.target_prod);
+      return [
+        Number(plan.factory_type),
+        plan.parts_no,
+        plan.machine_name,
+        ym_int,
+        plan.day,
+        Number.isNaN(targetProd) ? 0 : targetProd,
+        year,
+        month,
+      ];
+    });
+
+    const valuesSql = tuples.map(() => '(?, ?, ?, ?, ?, ?, ?, ?)').join(', ');
+    // INSERT IGNORE で重複時は無視（エラー対策）
+    await this.dataSource.query(
+      `
+      INSERT IGNORE INTO machining_product_plan_history
+        (factory_type, parts_no, machine_name, ym_int, day, target_prod, year, month)
+      VALUES
+        ${valuesSql}
+      `,
+      tuples.flat()
+    );
   }
 
   // 切削の生産計画を_historyテーブルにコピー
@@ -231,18 +249,34 @@ export class PlanService {
     const baseDate = plans[0].updated_at;
     const year = baseDate.getFullYear();
     const month = baseDate.getMonth()+1;
-    const historyData = plans.map(plan => {
-      return{
-        factory_type: plan.factory_type,
-        parts_no: plan.parts_no,
-        total: plan.total,
-        target_prod: plan.target_prod,
+    const ym_int = year * 100 + month;
+    // // 履歴データ重複回避のため、事前に削除してコピーを実施
+    await this.machiningpastRepo.delete({year,month});
+    // バルクインサート用の配列にデータを格納
+    const tuples = plans.map(plan => {
+      const targetProd = Number(plan.target_prod);
+      return [
+        Number(plan.factory_type),
+        plan.parts_no,
+        Number(plan.total),
+        Number.isNaN(targetProd) ? 0 : targetProd,
+        ym_int,
         year,
         month,
-      }
+      ];
     });
-    // 履歴データ重複回避のため、事前に削除してコピーを実施
-    await this.machiningpastRepo.delete({year,month});
-    await this.machiningpastRepo.insert(historyData);
+
+    const valuesSql = tuples.map(() => '(?, ?, ?, ?, ?, ?, ?)').join(', ');
+    // INSERT IGNORE で重複時は無視（エラー対策）
+    await this.dataSource.query(
+      `
+      INSERT IGNORE INTO machining_product_plan_history
+        (factory_type, parts_no, total, target_prod, ym_int, year, month)
+      VALUES
+        ${valuesSql}
+      `,
+      tuples.flat()
+    );
+    
   }
 }

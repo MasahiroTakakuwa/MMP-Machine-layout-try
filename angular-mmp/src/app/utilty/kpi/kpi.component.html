@@ -23,12 +23,22 @@
                         <p-dropdown [(ngModel)]="machinelistValue" [options]="machinelistValues" optionLabel="name" placeholder="Select"/>
                     </div>
                     <div class="font-semibold text-2xl">計画更新:{{updated_plan | date:'yyyy/MM/dd'}}</div>
- 
                     <div class="font-semibold text-2xl">最新生産:{{updated_prod | date:'yyyy/MM/dd'}}</div>
-                    
-                    <ion-button (click)="openYearMonthPicker()">年月選択</ion-button>
-
-                    <p-button label="更新" (onClick)="displayCharts()"></p-button>
+                    <div class="flex align-items-center gap-4">
+                        <div class="font-semibold text-2xl">年月</div>
+                        <p-datepicker
+                            [(ngModel)]="selectedDate"
+                            view="month"
+                            dateFormat="yy/mm"
+                            [yearNavigator]="true"
+                            yearRange="2020:2035"
+                            [maxDate]="maxDate"
+                            placeholder="表示月を選択"
+                            showIcon="true">
+                        </p-datepicker>
+                    </div>
+                    <p-button label="表示" (onClick)="displayCharts()"></p-button>
+                    <p-button label="テスト" (onClick)="onCheckYearMonth()"></p-button>
                     
                 </div>
             </div>

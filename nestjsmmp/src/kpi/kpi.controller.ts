@@ -71,6 +71,22 @@ export class KpiController {
       
     }
 
+    // 鍛造の過去KPIデータ取得
+    @Get('past/forging')
+    async getForgingPastKpi(@Query('factory') factory: number,
+                  @Query('machine_name') machine_name: string,
+                  @Query('year_month') year_month: number
+    ){
+      const ForgingPastPlan = await this.KpiService.getForgingPastPlan(factory,machine_name,year_month);
+      const ForgingPastProg = await this.KpiService.getForgingPastProgress(factory,machine_name,year_month);
+
+      return{
+        ForgingPastPlan,
+        ForgingPastProg
+      };
+      
+    }
+
     // 切削のKPIデータ取得
     @Get('machining')
     async getMachiningKpi(@Query('factory') factory: number,
@@ -85,6 +101,25 @@ export class KpiController {
       return{
         MachiningPlan,
         MachiningProg,
+        MachiningBaseCT
+      };
+      
+    }
+
+    // 切削の過去KPIデータ取得
+    @Get('past/machining')
+    async getMachiningPastKpi(@Query('factory') factory: number,
+                  @Query('parts_no') parts_no: string,
+                  @Query('line_no') line_no: string,
+                  @Query('year_month') year_month: number
+    ){
+      const MachiningPastPlan = await this.KpiService.getMachiningPastPlan(factory,parts_no,year_month);
+      const MachiningPastProg = await this.KpiService.getMachiningPastProgress(factory,parts_no,line_no,year_month);
+      const MachiningBaseCT = await this.KpiService.getMachiningBaseCT(factory,parts_no,line_no);
+      
+      return{
+        MachiningPastPlan,
+        MachiningPastProg,
         MachiningBaseCT
       };
       

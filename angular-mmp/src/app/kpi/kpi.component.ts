@@ -1070,91 +1070,91 @@ export class KpiComponent implements OnInit, OnDestroy{
             parts = parts.slice(0,-2);
         }
         // 鍛造
-        if(type == 0){
-            this.kpiService.getForgingTotal_filter(factory,machine,daynumber,firstday,today).subscribe({
-                next: (res: ForgingFilterResponse) => {
-                    PlanTotal = Number(res.ForgingPlan_filter);
-                    ProgTotal = Number(res.ForgingProg_filter);
-                    if(PlanTotal>ProgTotal){
-                        this.judge = '✖';
-                        this.delta = Math.floor(PlanTotal-ProgTotal);
-                    }
-                    else{
-                        this.judge = '〇';
-                        this.delta = Math.floor(ProgTotal-PlanTotal);
-                    }
+        // if(type == 0){
+        //     this.kpiService.getForgingTotal_filter(factory,machine,daynumber,firstday,today).subscribe({
+        //         next: (res: ForgingFilterResponse) => {
+        //             PlanTotal = Number(res.ForgingPlan_filter);
+        //             ProgTotal = Number(res.ForgingProg_filter);
+        //             if(PlanTotal>ProgTotal){
+        //                 this.judge = '✖';
+        //                 this.delta = Math.floor(PlanTotal-ProgTotal);
+        //             }
+        //             else{
+        //                 this.judge = '〇';
+        //                 this.delta = Math.floor(ProgTotal-PlanTotal);
+        //             }
 
-                },
+        //         },
                 
-            error: (err) => {
-                    console.error('getForgingTotal_factory error:', err);
-                    // エラー時のフォールバック
-                    PlanTotal = 0;
-                    ProgTotal = 0;
-                }
+        //     error: (err) => {
+        //             console.error('getForgingTotal_factory error:', err);
+        //             // エラー時のフォールバック
+        //             PlanTotal = 0;
+        //             ProgTotal = 0;
+        //         }
 
-            });
+        //     });
             
             
-        }
-        // 切削
-        else if(type == 1){
-            let PlanTotalPerday = 0;        // 稼働日当たりの累積生産数
-            let OrderTotalByMonth = 0;      // 月の切削指示数の合計
-            this.kpiService.getMachiningTotal_filter(factory,parts,machine,firstday,today).subscribe({
-                next: (res: MachiningFilterResponse) => {
-                    // --- アクセス方法 ---
-                this.filterplan = Array.isArray(res.MachiningPlan_filter) ? res.MachiningPlan_filter : [];
-                this.filterprod = Array.isArray(res.MachiningProg_filter) ? res.MachiningProg_filter : [];
+        // }
+        // // 切削
+        // else if(type == 1){
+        //     let PlanTotalPerday = 0;        // 稼働日当たりの累積生産数
+        //     let OrderTotalByMonth = 0;      // 月の切削指示数の合計
+        //     this.kpiService.getMachiningTotal_filter(factory,parts,machine,firstday,today).subscribe({
+        //         next: (res: MachiningFilterResponse) => {
+        //             // --- アクセス方法 ---
+        //         this.filterplan = Array.isArray(res.MachiningPlan_filter) ? res.MachiningPlan_filter : [];
+        //         this.filterprod = Array.isArray(res.MachiningProg_filter) ? res.MachiningProg_filter : [];
                 
-                PlanTotalPerday = this.filterplan[0].target_prod;
-                OrderTotalByMonth = this.filterplan[0].total;
+        //         PlanTotalPerday = this.filterplan[0].target_prod;
+        //         OrderTotalByMonth = this.filterplan[0].total;
                 
-                // 品番指定ありの場合、分岐
-                if(parts !== 'all'){
-                // 生産計画(切削の生産計画は品番ごとのため、1ライン当たりの生産数を算出)
-                    let lines = this.machinelistValues.length -1 ;    // 全ラインを除外
-                    // 全ラインが選択されている場合
-                    if(machine === 'all'){
-                        lines = 1;  
-                    }
-                    PlanTotalPerday = Math.ceil(PlanTotalPerday/lines);
+        //         // 品番指定ありの場合、分岐
+        //         if(parts !== 'all'){
+        //         // 生産計画(切削の生産計画は品番ごとのため、1ライン当たりの生産数を算出)
+        //             let lines = this.machinelistValues.length -1 ;    // 全ラインを除外
+        //             // 全ラインが選択されている場合
+        //             if(machine === 'all'){
+        //                 lines = 1;  
+        //             }
+        //             PlanTotalPerday = Math.ceil(PlanTotalPerday/lines);
                 
-                }
+        //         }
                 
-                let record = this.filterprod[0].record_count;
-                if(machine === 'all'){
-                    record = record / (this.machinelistValues.length -1);
-                }
+        //         let record = this.filterprod[0].record_count;
+        //         if(machine === 'all'){
+        //             record = record / (this.machinelistValues.length -1);
+        //         }
                 
-                PlanTotal = PlanTotalPerday * daycount;
-                ProgTotal = this.filterprod[0].good_prod;
+        //         PlanTotal = PlanTotalPerday * daycount;
+        //         ProgTotal = this.filterprod[0].good_prod;
                 
-                if(PlanTotal>OrderTotalByMonth){
-                    PlanTotal = OrderTotalByMonth;
-                }
-                if(PlanTotal>ProgTotal){
-                    this.judge = '✖';
-                    this.delta = Math.floor(PlanTotal-ProgTotal);
-                }
-                else{
-                    this.judge = '〇';
-                    this.delta = Math.floor(ProgTotal - PlanTotal);
-                }
+        //         if(PlanTotal>OrderTotalByMonth){
+        //             PlanTotal = OrderTotalByMonth;
+        //         }
+        //         if(PlanTotal>ProgTotal){
+        //             this.judge = '✖';
+        //             this.delta = Math.floor(PlanTotal-ProgTotal);
+        //         }
+        //         else{
+        //             this.judge = '〇';
+        //             this.delta = Math.floor(ProgTotal - PlanTotal);
+        //         }
 
-            },
+        //     },
                 
-                error: (err) => {
-                        console.error('getMachiningTotal_factory error:', err);
-                        // エラー時のフォールバック
-                        PlanTotal = 0;
-                        ProgTotal = 0;
-                    }
+        //         error: (err) => {
+        //                 console.error('getMachiningTotal_factory error:', err);
+        //                 // エラー時のフォールバック
+        //                 PlanTotal = 0;
+        //                 ProgTotal = 0;
+        //             }
 
-            });
+        //     });
             
 
-        }
+        // }
 
     }
 

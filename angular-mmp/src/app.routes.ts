@@ -15,6 +15,7 @@ import { GeneralInformation } from './app/pages/account-management/generalInform
 import { AccountManagement } from './app/pages/account-management/accountManagement';
 import { PlanComponent } from './app/plan/plan.component';
 import { KpiComponent } from './app/kpi/kpi.component';
+import { Test } from './app/test/test.component';
 // 共用コンポーネント
 import { UtilityKpiComponent } from './app/utilty/kpi/kpi.component';
 import { UtilitySchedulerComponent } from './app/utilty/scheduler/scheduler.component';
@@ -47,8 +48,9 @@ export const appRoutes: Routes = [
             // 共用ページに対応するルート定義を追加。
             { path: 'kpi/:factory/:type', component: UtilityKpiComponent},
             { path: 'scheduler/:factory', component: UtilitySchedulerComponent},
-            { path: 'toolchange/:factory', component: UtilityToolChangeComponent}
-            // { path: 'test2', component: Test2},
+            { path: 'toolchange/:factory', component: UtilityToolChangeComponent},
+            // 検証用ページ
+            { path: 'test', component: Test},
 
         ]
     },

@@ -16,6 +16,13 @@ export interface MachiningProgItem {
   visual_defect: number;
 }
 
+export interface MachiningProgItems {
+  day: number;
+  good_prod: number;
+  inline_defect: number;
+  visual_defect: number;
+}
+
 export interface MachiningBaseCTItem {
     machine_no: number;
     CT: number;
@@ -24,5 +31,11 @@ export interface MachiningBaseCTItem {
 export interface MachiningResponse {
   MachiningPlan: MachiningPlanItem[];
   MachiningProg: MachiningProgItem[];
+  MachiningBaseCT: MachiningBaseCTItem[];
+}
+
+export interface MachiningPastResponse {
+  MachiningPastPlan: MachiningPlanItem[];
+  MachiningPastProg: MachiningProgItems[];
   MachiningBaseCT: MachiningBaseCTItem[];
 }

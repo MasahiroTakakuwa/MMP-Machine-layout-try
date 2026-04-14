@@ -15,6 +15,9 @@ export class ForgingPastPlan {
     @Column({name: 'machine_name'})
     machine_name: string;
 
+    @Column({name: 'ym_int'})
+    ym_int: number;
+
     @Column({name: 'day'})
     day: number;
 
