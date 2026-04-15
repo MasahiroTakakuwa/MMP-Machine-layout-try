@@ -31,6 +31,11 @@ export interface ForgingResponse {
   ForgingProg: ForgingProgItem[];
 }
 
+export interface ForgingCurrentResponse {
+  ForgingCurrentPlan: ForgingPlanItem[];
+  ForgingCurrentProg: ForgingProdItems[];
+}
+
 export interface ForgingPastResponse {
   ForgingPastPlan: ForgingPlanItem[];
   ForgingPastProg: ForgingProdItems[];

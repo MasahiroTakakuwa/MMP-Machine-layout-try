@@ -74,8 +74,17 @@ export class KpiService {
     
   }
 
+  // 鍛造のKPIデータ取得(今日の日付まで取得に修正)
+  getForgingCurrentKpi(factory: number =0,machine_name: string='', year_month: number=0, today: number=1): Observable<any>{
+    const url = `${this.apiURL}/kpi/current/forging?factory=${factory}&machine_name=${machine_name}&year_month=${year_month}&today=${today}`;
+    return this.http.get<any>(url).pipe(
+        map((res) => res as any)    
+    );
+    
+  }
+
   // 鍛造の過去KPIデータ取得
-  getForgingPastKpi(factory: number =0,machine_name: string='', year_month: number=0): Observable<any>{
+  getForgingPastKpi(factory: number =0, machine_name: string='', year_month: number=0): Observable<any>{
     const url = `${this.apiURL}/kpi/past/forging?factory=${factory}&machine_name=${machine_name}&year_month=${year_month}`;
     return this.http.get<any>(url).pipe(
         map((res) => res as any)    

@@ -207,6 +207,24 @@ export class KpiService {
       const results = await query.getRawMany();
       return results;
   }
+  // 鍛造の生産計画取得
+  async getForgingCurrentPlan(factory: number, machine_name: string, today: number){
+    const query = await this.forgingPlanRepo
+      .createQueryBuilder('m')
+      .select(['m.day AS day',
+              'SUM(m.target_prod) AS target_prod'
+      ])
+      .where('m.factory_type = :factory',{factory})
+      .andWhere('m.day < :today',{today})
+      .groupBy('m.day')
+      .orderBy('m.day ')
+      // 設備指定ありの場合は条件追加
+      if(machine_name !== 'all'){
+        query.andWhere('m.machine_name = :machine_name', {machine_name})
+      }
+      const results = await query.getRawMany();
+      return results;
+  }
 
   // 鍛造の過去の生産計画取得
   async getForgingPastPlan(factory: number, machine_name: string, year_month:number){
@@ -242,6 +260,29 @@ export class KpiService {
       .andWhere('m.prod_date >= :date',{date})
       .groupBy('m.prod_date')
       .orderBy('m.prod_date')
+      if(machine_name !== 'all'){
+        query.andWhere('m.machine_name = :machine_name',{machine_name})
+      }
+      const results = await query.getRawMany();
+      return results;
+
+  }
+
+  // 鍛造の最新の生産実績取得
+  async getForgingCurrentProgress(factory: number, machine_name: string, year_month: number, today: number){
+    const query = await this.forgingKpiRepo
+      .createQueryBuilder('m')
+      .select(['m.day AS day',
+              'SUM(m.good_prod) AS good_prod',
+              'SUM(m.waste_prod) AS waste_prod',
+              'SUM(m.setup_prod) AS setup_prod',
+              'SUM(m.inline_defect) AS inline_defect'
+      ])
+      .where('m.factory_type = :factory',{factory})
+      .andWhere('m.ym_int = :year_month',{year_month})
+      .andWhere('m.day < :today',{today})
+      .groupBy('m.day')
+      .orderBy('m.day')
       if(machine_name !== 'all'){
         query.andWhere('m.machine_name = :machine_name',{machine_name})
       }

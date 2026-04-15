@@ -71,6 +71,23 @@ export class KpiController {
       
     }
 
+    // 鍛造の最新KPIデータ取得
+    @Get('current/forging')
+    async getForgingCurrentKpi(@Query('factory') factory: number,
+                  @Query('machine_name') machine_name: string,
+                  @Query('year_month') year_month: number,
+                  @Query('today') today: number
+    ){
+      const ForgingCurrentPlan = await this.KpiService.getForgingCurrentPlan(factory,machine_name,today);
+      const ForgingCurrentProg = await this.KpiService.getForgingCurrentProgress(factory,machine_name,year_month,today);
+
+      return{
+        ForgingCurrentPlan,
+        ForgingCurrentProg
+      };
+      
+    }
+
     // 鍛造の過去KPIデータ取得
     @Get('past/forging')
     async getForgingPastKpi(@Query('factory') factory: number,
