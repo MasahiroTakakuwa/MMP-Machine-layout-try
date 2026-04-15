@@ -373,48 +373,85 @@ export class KpiService {
 
   // 切削の生産計画取得
   async getMachiningPlan(factory: number, parts_no: string){
+    const keyword = parts_no ?? ''; // 入力文字列
     const query = await this.machiningPlanRepo
       .createQueryBuilder('m')
+      .select(['SUM(m.target_prod) AS target_prod',
+               'SUM(m.total) AS total'
+              ])
       .where('m.factory_type = :factory',{factory})
-      if(parts_no = 'all'){
-        query.select(['SUM(m.target_prod) AS target_prod',
-                      'SUM(m.total) AS total'
-              ])
-      }
-      else{
-        const keyword = parts_no ?? ''; // 入力文字列
-        query.select(['m.target_prod AS target_prod',
-                      'm.total AS total'
-              ])
+      if(parts_no !== 'all'){
         query.andWhere('m.parts_no LIKE :parts_no', {parts_no: `%${keyword}%` })
+
       }
+      
       const results = await query.getRawMany();
       return results;
       
   }
 
+  // バックアップ
+  // async getMachiningPlan(factory: number, parts_no: string){
+  //   const query = await this.machiningPlanRepo
+  //     .createQueryBuilder('m')
+  //     .where('m.factory_type = :factory',{factory})
+  //     if(parts_no = 'all'){
+  //       query.select(['SUM(m.target_prod) AS target_prod',
+  //                     'SUM(m.total) AS total'
+  //             ])
+  //     }
+  //     else{
+  //       const keyword = parts_no ?? ''; // 入力文字列
+  //       query.select(['m.target_prod AS target_prod',
+  //                     'm.total AS total'
+  //             ])
+  //       query.andWhere('m.parts_no LIKE :parts_no', {parts_no: `%${keyword}%` })
+  //     }
+  //     const results = await query.getRawMany();
+  //     return results;
+      
+  // }
+
   // 切削の過去の生産計画取得
   async getMachiningPastPlan(factory: number, parts_no: string, year_month: number){
+    const keyword = parts_no ?? ''; // 入力文字列
     const query = await this.machiningpastRepo
       .createQueryBuilder('m')
-      .where('m.factory_type = :factory',{factory})
-      .andWhere('m.ym_int = :year_month',{year_month})
-      if(parts_no = 'all'){
-        query.select(['SUM(m.target_prod) AS target_prod',
+      .select(['SUM(m.target_prod) AS target_prod',
                       'SUM(m.total) AS total'
               ])
-      }
-      else{
-        const keyword = parts_no ?? ''; // 入力文字列
-        query.select(['m.target_prod AS target_prod',
-                      'm.total AS total'
-              ])
+      .where('m.factory_type = :factory',{factory})
+      .andWhere('m.ym_int = :year_month',{year_month})
+      if(parts_no !== 'all'){
         query.andWhere('m.parts_no LIKE :parts_no', {parts_no: `%${keyword}%` })
       }
       const results = await query.getRawMany();
       return results;
 
   }
+
+  // バックアップ
+  // async getMachiningPastPlan(factory: number, parts_no: string, year_month: number){
+  //   const query = await this.machiningpastRepo
+  //     .createQueryBuilder('m')
+  //     .where('m.factory_type = :factory',{factory})
+  //     .andWhere('m.ym_int = :year_month',{year_month})
+  //     if(parts_no = 'all'){
+  //       query.select(['SUM(m.target_prod) AS target_prod',
+  //                     'SUM(m.total) AS total'
+  //             ])
+  //     }
+  //     else{
+  //       const keyword = parts_no ?? ''; // 入力文字列
+  //       query.select(['m.target_prod AS target_prod',
+  //                     'm.total AS total'
+  //             ])
+  //       query.andWhere('m.parts_no LIKE :parts_no', {parts_no: `%${keyword}%` })
+  //     }
+  //     const results = await query.getRawMany();
+  //     return results;
+
+  // }
 
   // 切削の生産実績取得
   async getMachiningProgress(factory: number, parts_no: string, line_no: string, date: string){
@@ -450,6 +487,61 @@ export class KpiService {
       }
 
     }
+    const results = await query.getRawMany();
+    return results;    
+  }
+
+  // 切削の最新の生産実績取得
+  async getMachiningCurrentProgress(factory: number, parts_no: string, line_no: string, year_month: number){
+    const keyword = parts_no ?? ''; // 入力文字列
+    // クエリ文の共通部分を記述
+    const query = await this.machiningKpiRepo
+    .createQueryBuilder('m')
+    .select(['m.day AS day',
+            'SUM(m.good_prod) AS good_prod',
+            'SUM(m.inline_defect) AS inline_defect',
+            'SUM(m.visual_defect) AS visual_defect'
+            ])
+    .where('m.factory_type = :factory',{factory})
+    .andWhere('m.ym_int = :year_month',{year_month})
+    .andWhere('m.line_no NOT LIKE :underbarZero',{underbarZero:'%\\_0'})
+    .andWhere('m.machine_name != :name',{name:'N100'})
+    // 指定があった場合の追加条件
+    // 品番指定
+    if(parts_no !== 'all'){
+      query.andWhere('m.parts_no LIKE :parts_no', {parts_no: `%${keyword}%` })
+    }
+    // 設備ライン指定
+    if(line_no !== 'all'){
+      query.andWhere('m.line_no = :line_no',{line_no})
+    }
+      query.groupBy('m.day')
+           .orderBy('m.day')
+
+
+    // 品番・設備の両方指定有りの場合
+    // if(parts_no !== 'all' && line_no !== 'all'){
+    //   query.select(['m.prod_date AS prod_date',
+    //         'm.good_prod AS good_prod',
+    //         'm.inline_defect AS inline_defect',
+    //         'm.visual_defect AS visual_defect'
+    //         ])
+    //         .andWhere('m.parts_no LIKE :parts_no', {parts_no: `%${keyword}%` })
+    //         .andWhere('m.line_no = :line_no',{line_no})
+    // }
+    // else{
+    //   query.select(['m.prod_date AS prod_date',
+    //         'SUM(m.good_prod) AS good_prod',
+    //         'SUM(m.inline_defect) AS inline_defect',
+    //         'SUM(m.visual_defect) AS visual_defect'
+    //         ])
+            
+    //   if(line_no === 'all'){
+    //     query.andWhere('m.parts_no LIKE :parts_no', {parts_no: `%${keyword}%` })
+
+    //   }
+
+    // }
     const results = await query.getRawMany();
     return results;    
   }

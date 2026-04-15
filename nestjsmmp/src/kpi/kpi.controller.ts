@@ -1,8 +1,6 @@
 import { Controller, Get, Query, UseGuards } from "@nestjs/common";
 import { KpiService } from "./kpi.service";
-import { machine } from "os";
 import { AuthGuard } from "src/userManagement/auth/auth.guard";
-import { Console } from "console";
 
 // KPI表示に関係するデータを取得するAPI
 //@UseGuards(AuthGuard)
@@ -30,15 +28,6 @@ export class KpiController {
     ){
       return this.KpiService.getLineNoSummary_type(factory,parts_no,type)
     }
-
-    // 過去の出来高を工場・品番ごとに取得
-    // @Get('product')
-    // getProductHistory(@Query('factory') factory: number,
-    //                   @Query('parts_no') parts_no: string,
-    //                   @Query('date') date: string
-    // ){
-    //   return this.KpiService.getproductSummary(factory,parts_no,date)
-    // }
 
     // 生産計画の最終更新日を取得
     @Get('lastupdate/plan')
@@ -118,6 +107,25 @@ export class KpiController {
       return{
         MachiningPlan,
         MachiningProg,
+        MachiningBaseCT
+      };
+      
+    }
+
+    // 切削の最新のKPIデータ取得
+    @Get('current/machining')
+    async getMachiningCurrentKpi(@Query('factory') factory: number,
+                  @Query('parts_no') parts_no: string,
+                  @Query('line_no') line_no: string,
+                  @Query('year_month') year_month: number,
+    ){
+      const MachiningCurrentPlan = await this.KpiService.getMachiningPlan(factory,parts_no);
+      const MachiningCurrentProg = await this.KpiService.getMachiningCurrentProgress(factory,parts_no,line_no,year_month);
+      const MachiningBaseCT = await this.KpiService.getMachiningBaseCT(factory,parts_no,line_no);
+      console.log('plan:',MachiningCurrentPlan);
+      return{
+        MachiningCurrentPlan,
+        MachiningCurrentProg,
         MachiningBaseCT
       };
       

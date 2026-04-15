@@ -34,6 +34,12 @@ export interface MachiningResponse {
   MachiningBaseCT: MachiningBaseCTItem[];
 }
 
+export interface MachiningCurrentResponse {
+  MachiningCurrentPlan: MachiningPlanItem[];
+  MachiningCurrentProg: MachiningProgItems[];
+  MachiningBaseCT: MachiningBaseCTItem[];
+}
+
 export interface MachiningPastResponse {
   MachiningPastPlan: MachiningPlanItem[];
   MachiningPastProg: MachiningProgItems[];

@@ -119,6 +119,15 @@ export class KpiService {
     
   }
 
+  // 切削の最新のKPIデータ取得
+  getMachiningCurrentKPI(factory: number =0,parts_no: string='',line_no: string='', year_month: number=0): Observable<any>{
+    const url = `${this.apiURL}/kpi/current/machining?factory=${factory}&parts_no=${parts_no}&line_no=${line_no}&year_month=${year_month}`;
+    return this.http.get<any>(url).pipe(
+        map((res) => res as any)    
+    );
+    
+  }
+
   // 切削の過去KPIデータ取得
   getMachiningPastKPI(factory: number =0,parts_no: string='',line_no: string='', year_month: number=0): Observable<any>{
     const url = `${this.apiURL}/kpi/past/machining?factory=${factory}&parts_no=${parts_no}&line_no=${line_no}&year_month=${year_month}`;
