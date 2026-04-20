@@ -122,7 +122,6 @@ export class KpiController {
       const MachiningCurrentPlan = await this.KpiService.getMachiningPlan(factory,parts_no);
       const MachiningCurrentProg = await this.KpiService.getMachiningCurrentProgress(factory,parts_no,line_no,year_month);
       const MachiningBaseCT = await this.KpiService.getMachiningBaseCT(factory,parts_no,line_no);
-      console.log('plan:',MachiningCurrentPlan);
       return{
         MachiningCurrentPlan,
         MachiningCurrentProg,
@@ -221,6 +220,39 @@ export class KpiController {
         MachiningProg_filter
       };
 
+    }
+
+    // 工場レイアウトの進捗表示用
+    // 鍛造の生産進捗データ取得
+    @Get('progress/forging')
+    async getProgressForging(@Query('factory') factory: number,
+                  @Query('year_month') year_month: number,
+                  @Query('today') today: number
+    ){
+      const ForgingPlanTotal = await this.KpiService.getForgingPlanTotal(factory,today);
+      const ForgingProgTotal = await this.KpiService.getForgingProgressTotal(factory,year_month,today);
+      return{
+        ForgingPlanTotal,
+        ForgingProgTotal
+      };
+      
+    }
+
+    // 切削の生産進捗データ取得
+    @Get('progress/machining')
+    async getMachiningProgress(@Query('factory') factory: number,
+                               @Query('year_month') year_month: number,
+                               @Query('today') today: number
+
+    ){
+      const MachiningPlanTotal = await this.KpiService.getMachiningPlanTotal(factory);
+      const MachiningProgTotal = await this.KpiService.getMachiningProgressTotal(factory,year_month,today);
+      
+      return{
+        MachiningPlanTotal,
+        MachiningProgTotal
+      };
+      
     }
 
 }

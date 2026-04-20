@@ -1,7 +1,17 @@
 // 切削進捗勝ち負け計算用数値格納
-export interface MachiningTotalsResponse {
-  MachiningPlan_factory: number; // 返却が数値なら number に
-  MachiningProg_factory: number; // 同上
+export interface MachiningTotalResponse {
+  MachiningPlanTotal: PlanTotal;
+  MachiningProgTotal: ProgTotal; // 同上
+
+}
+
+interface PlanTotal {
+  target_prod: number;
+  total:number;
+}
+
+interface ProgTotal{
+  good_prod:number;
 }
 
 export interface MachiningPlanItem {

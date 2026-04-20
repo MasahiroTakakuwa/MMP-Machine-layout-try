@@ -40,10 +40,10 @@ import { LayoutService } from '../layout/service/layout.service';
 import { KpiService } from '../services/kpi.service';
 
 import { StatusMachineDialogComponent } from '../shared/components/status-machine-dialog/status-machine-dialog.component';
-import { getFirstDayOfCurrentMonthInJST } from '../shared/utils';
+import { getFirstDayOfCurrentMonthInJST,getWeekdaysThisMonthUntilYesterday } from '../shared/utils';
 import { getPerformanceColor, countColorsFromMachines } from '../shared/utils';
 
-import { ForgingPlanItem,ForgingProgItem,ForgingResponse } from '../interface/forging';
+import { ForgingPlanItem,ForgingProgItem,ForgingResponse,ForgingTotalResponse } from '../interface/forging';
 
 @Component({
   selector: 'app-jupiter',
@@ -185,7 +185,8 @@ export class JupiterComponent implements OnInit, OnDestroy {
       });
 
     // 6) KPI（前日までの生産進捗表示）- 単発呼び出し
-    this.displayProgResult();
+    // this.displayProgResult();
+    this.ForgingProgressResult();
   }
   
   toggleEditMode(): void {
@@ -542,6 +543,34 @@ onWheel(event: WheelEvent): void {
     },
     error: (err) => console.error(err),
     });
+  }
+
+  ForgingProgressResult(){
+    const now = new Date();
+    const year = now.getFullYear();
+    const month = now.getMonth()+1;
+    const today = now.getDate();
+    const ym = year*100+month;
+    let weekdays = getWeekdaysThisMonthUntilYesterday(now);
+    this.kpiService.getProgressForging(1,ym,today).pipe(takeUntil(this.destroy$))
+        .subscribe({
+          next:(res: ForgingTotalResponse) => {
+            const PlanTotal = Number(res.ForgingPlanTotal.target_prod);
+            const ProgTotal = Number(res.ForgingProgTotal.good_prod);
+            
+            if(PlanTotal>ProgTotal){
+            this.judge = '✖';
+            this.delta = Math.floor(PlanTotal-ProgTotal);
+            }
+            else{
+                this.judge = '〇';
+                this.delta = Math.floor(ProgTotal - PlanTotal);
+            }
+          }
+
+        });
+
+
   }
 
 }

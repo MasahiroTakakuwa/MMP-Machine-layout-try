@@ -62,6 +62,15 @@ export class KpiService {
     );
   }
 
+  // 工場レイアウトの生産進捗表示(鍛造)
+  getProgressForging(factory: number =0,year_month: number=0,today: number=0): Observable<any>{
+    const url = `${this.apiURL}/kpi/progress/forging?factory=${factory}&year_month=${year_month}&today=${today}`;
+    return this.http.get<any>(url).pipe(
+        map((res) => res as any)    
+    );
+    
+  }
+
   // 
 
   // チャート用データ
@@ -146,6 +155,15 @@ export class KpiService {
     
   }
 
+  // 切削のKPIデータ取得
+  getMachiningProgress(factory: number =0,year_month: number=0, today: number=1): Observable<any>{
+    const url = `${this.apiURL}/kpi/progress/machining?factory=${factory}&year_month=${year_month}&today=${today}`;
+    return this.http.get<any>(url).pipe(
+        map((res) => res as any)    
+    );
+    
+  }
+  
   //フィルタリングした切削の生産勝ち負け
   // getMachiningTotal_filter(factory: number =0,parts: string ='',line: string ='',firstday: string ='',today: string=''): Observable<any>{
   //   const url = `${this.apiURL}/kpi/machining_filter?factory=${factory}&parts=${parts}&line=${line}&firstday=${firstday}&today=${today}`;

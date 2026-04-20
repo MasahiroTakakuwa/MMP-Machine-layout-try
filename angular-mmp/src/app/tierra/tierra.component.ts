@@ -41,10 +41,10 @@ import { UsersService } from '../services/users.service';
 import { KpiService } from '../services/kpi.service';
 
 import { StatusMachineDialogComponent } from '../shared/components/status-machine-dialog/status-machine-dialog.component';
-import { getFirstDayOfCurrentMonthInJST } from '../shared/utils'
+import { getFirstDayOfCurrentMonthInJST,getWeekdaysThisMonthUntilYesterday } from '../shared/utils'
 import { getPerformanceColor, countColorsFromMachines } from '../shared/utils';
 
-import { MachiningPlanItem,MachiningProgItem,MachiningBaseCTItem,MachiningResponse } from '../interface/machining';
+import { MachiningPlanItem,MachiningProgItem,MachiningBaseCTItem,MachiningResponse,MachiningTotalResponse } from '../interface/machining';
 
 @Component({
   selector: 'app-tierra',
@@ -180,7 +180,8 @@ export class TierraComponent implements OnInit, OnDestroy {
       });
 
     // 6) KPI（前日までの生産進捗表示）- 単発呼び出し
-    this.displayProgResult();
+    // this.displayProgResult();
+    this.MachiningProgressResult();
   }
 
   toggleEditMode(): void {
@@ -534,4 +535,38 @@ onWheel(event: WheelEvent): void {
         });
   
     }
+
+    MachiningProgressResult(){
+        const now = new Date();
+        const year = now.getFullYear();
+        const month = now.getMonth()+1;
+        const today = now.getDate();
+        const ym = year*100+month;
+        let weekdays = getWeekdaysThisMonthUntilYesterday(now);
+        this.kpiService.getMachiningProgress(4,ym,today).pipe(takeUntil(this.destroy$))
+            .subscribe({
+              next: (res:MachiningTotalResponse) => {
+                const PlanPerDay = res.MachiningPlanTotal.target_prod;
+                const orderByMonth = res.MachiningPlanTotal.total;
+                const ProgTotal = res.MachiningProgTotal.good_prod;
+                let PlanTotal = Number(PlanPerDay)*weekdays;
+                
+                // 工場全体の生産進捗勝ち負け表示
+            if(orderByMonth < PlanTotal){
+              PlanTotal = orderByMonth;
+            }
+            
+            if(PlanTotal>ProgTotal){
+              this.judge = '✖';
+              this.delta = Math.floor(PlanTotal-ProgTotal);
+            }
+            else{
+              this.judge = '〇';
+              this.delta = Math.floor(ProgTotal - PlanTotal);
+            }
+          },
+          error: (err) => console.error(err),
+          });
+    }
+
 }

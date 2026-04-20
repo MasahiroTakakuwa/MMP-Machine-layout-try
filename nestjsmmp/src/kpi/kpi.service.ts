@@ -1,7 +1,6 @@
 import { Injectable } from "@nestjs/common";
 import { EntityManager, In, Repository } from "typeorm";
 import { Devices } from "./models/devices.entity";
-// import { ProductHistory } from "./models/product-history.entity";
 import { MachiningKpi } from "./models/machining-kpi.entity";
 import { ForgingKpi } from "./models/forging-kpi.entity";
 import { MachiningProductPlan } from "./models/machining-product-plan.entity";
@@ -11,7 +10,6 @@ import { ForgingPastPlan } from "./models/forging-product-plan-history.entity";
 import { InjectRepository } from "@nestjs/typeorm";
 import { MachineStatusHistory } from "./models/machine-status-history.entity";
 import { Parts } from "./models/parts.entity";
-import { query } from "express";
 
 @Injectable()
 export class KpiService {
@@ -23,8 +21,6 @@ export class KpiService {
     private readonly PartsRepo: Repository<Parts>,
     @InjectRepository(MachineStatusHistory)
     private readonly statusRepo: Repository<MachineStatusHistory>,
-    // @InjectRepository(ProductHistory)
-    // private readonly productHistoryRepo: Repository<ProductHistory>,
     @InjectRepository(MachiningKpi)
     private readonly machiningKpiRepo: Repository<MachiningKpi>,
     @InjectRepository(ForgingKpi)
@@ -189,6 +185,58 @@ export class KpiService {
 
   }
 
+  // 工場レイアウト生産進捗表示
+  // 生産計画取得
+  async getForgingPlanTotal(factory: number, today: number){
+    const query = await this.forgingPlanRepo
+      .createQueryBuilder('m')
+      .select('SUM(m.target_prod) AS target_prod')
+      .where('m.factory_type = :factory',{factory})
+      .andWhere('m.day < :today',{today})
+    const result = await query.getRawOne();
+    return result;
+
+  }
+
+  async getMachiningPlanTotal(factory: number){
+    const query = await this.machiningPlanRepo
+      .createQueryBuilder('m')
+      .select(['SUM(m.total) AS total',
+               'SUM(m.target_prod) AS target_prod'
+              ])
+      .where('m.factory_type = :factory',{factory})
+      const result = await query.getRawOne();
+      return result;
+      
+  }
+
+  async getForgingProgressTotal(factory:number,year_month: number, today: number){
+    const query = await this.forgingKpiRepo
+      .createQueryBuilder('m')
+      .select('SUM(m.good_prod) AS good_prod')
+      .where('m.factory_type = :factory',{factory})
+      .andWhere('m.ym_int = :year_month',{year_month})
+      .andWhere('m.day < :today',{today})
+    const result = await query.getRawOne();
+    return result;
+
+  }
+
+  async getMachiningProgressTotal(factory: number, year_month: number, today: number){
+    const query = await this.machiningKpiRepo
+    .createQueryBuilder('m')
+    .select('SUM(m.good_prod) AS good_prod')
+    .where('m.factory_type = :factory',{factory})
+    .andWhere('m.ym_int = :year_month',{year_month})
+    .andWhere('m.line_no NOT LIKE :underbarZero',{underbarZero:'%\\_0'})
+    .andWhere('m.machine_name != :name',{name:'N100'})
+    .andWhere('m.day < :today',{today})
+    const result = await query.getRawOne();
+    return result;
+
+  }
+
+  // ここまで
   // 鍛造の生産計画取得
   // 鍛造は工場内全設備or対象設備で絞り込み
   async getForgingPlan(factory: number, parts_no: string, machine_name: string){
@@ -207,6 +255,7 @@ export class KpiService {
       const results = await query.getRawMany();
       return results;
   }
+  
   // 鍛造の生産計画取得
   async getForgingCurrentPlan(factory: number, machine_name: string, today: number){
     const query = await this.forgingPlanRepo

@@ -41,11 +41,11 @@ import { LayoutService } from '../layout/service/layout.service';
 import { KpiService } from '../services/kpi.service';
 
 import { StatusMachineDialogComponent } from '../shared/components/status-machine-dialog/status-machine-dialog.component';
-import { getFirstDayOfCurrentMonthInJST } from '../shared/utils';
+import { getFirstDayOfCurrentMonthInJST,getWeekdaysThisMonthUntilYesterday } from '../shared/utils';
 import { getPerformanceColor, countColorsFromMachines } from '../shared/utils';
 
-import { ForgingPlanItem,ForgingProgItem,ForgingResponse } from '../interface/forging';
-import { MachiningPlanItem,MachiningProgItem,MachiningBaseCTItem,MachiningResponse } from '../interface/machining';
+import { ForgingPlanItem,ForgingProgItem,ForgingResponse,ForgingTotalResponse } from '../interface/forging';
+import { MachiningPlanItem,MachiningProgItem,MachiningBaseCTItem,MachiningResponse,MachiningTotalResponse } from '../interface/machining';
 
 @Component({
   selector: 'app-saturn',
@@ -190,8 +190,10 @@ export class SaturnComponent implements OnInit, OnDestroy {
       });
 
     // 6) KPI（前日までの生産進捗表示）- 単発呼び出し
-    this.displayProgResult_formar();
-    this.displayProgResult_machining();
+    // this.displayProgResult_formar();
+    // this.displayProgResult_machining();
+      this.ForgingProgressResult();
+      this.MachiningProgressResult();
 
   }  
   
@@ -536,96 +538,155 @@ export class SaturnComponent implements OnInit, OnDestroy {
 
   // }
 
-  displayProgResult_formar(){
-    //Saturnは切削・鍛造を別々で表示
-    const date = getFirstDayOfCurrentMonthInJST();      // 今月1日をstring型で生成
-    const parts = 'all';
-    const machine = 'all';
-    let progByDay: number[] = new Array(31).fill(0);      //生産実績
-    let planByDay: number[] = new Array(31).fill(0);      //日ごと生産計画数
-    let daycount = 0;       // 稼働日数(生産進捗表示に使用)
-    let PlanTotal = 0;
-    let ProgTotal = 0;
-    // 工場指定(Saturn:5)
-    // 鍛造
-    this.kpiService.getForgingKpi(5, parts, machine, date).pipe(takeUntil(this.destroy$))
-    .subscribe({
-      next: (res: ForgingResponse) => {
-        // --- アクセス方法 ---
-        this.formarplans = Array.isArray(res.ForgingPlan) ? res.ForgingPlan : [];
-        this.formarprogs = Array.isArray(res.ForgingProg) ? res.ForgingProg : [];
-        // 生産計画
-        for(let i=0;i<this.formarplans.length;i++){
-            const index = this.formarplans[i].day;
-            planByDay[index-1] = this.formarplans[i].target_prod;
+  // displayProgResult_formar(){
+  //   //Saturnは切削・鍛造を別々で表示
+  //   const date = getFirstDayOfCurrentMonthInJST();      // 今月1日をstring型で生成
+  //   const parts = 'all';
+  //   const machine = 'all';
+  //   let progByDay: number[] = new Array(31).fill(0);      //生産実績
+  //   let planByDay: number[] = new Array(31).fill(0);      //日ごと生産計画数
+  //   let daycount = 0;       // 稼働日数(生産進捗表示に使用)
+  //   let PlanTotal = 0;
+  //   let ProgTotal = 0;
+  //   // 工場指定(Saturn:5)
+  //   // 鍛造
+  //   this.kpiService.getForgingKpi(5, parts, machine, date).pipe(takeUntil(this.destroy$))
+  //   .subscribe({
+  //     next: (res: ForgingResponse) => {
+  //       // --- アクセス方法 ---
+  //       this.formarplans = Array.isArray(res.ForgingPlan) ? res.ForgingPlan : [];
+  //       this.formarprogs = Array.isArray(res.ForgingProg) ? res.ForgingProg : [];
+  //       // 生産計画
+  //       for(let i=0;i<this.formarplans.length;i++){
+  //           const index = this.formarplans[i].day;
+  //           planByDay[index-1] = this.formarplans[i].target_prod;
             
-        }
-        // 生産実績
-        for(let n=0;n<this.formarprogs.length;n++){
-            // 日付部分をintに変換
-            const day = parseInt(this.formarprogs[n].prod_date.split('-')[2], 10); 
-            progByDay[day-1] = this.formarprogs[n].good_prod;       // 良品数
-            // テスト
-            ProgTotal=Number(ProgTotal)+Number(this.formarprogs[n].good_prod);
-            daycount++;
+  //       }
+  //       // 生産実績
+  //       for(let n=0;n<this.formarprogs.length;n++){
+  //           // 日付部分をintに変換
+  //           const day = parseInt(this.formarprogs[n].prod_date.split('-')[2], 10); 
+  //           progByDay[day-1] = this.formarprogs[n].good_prod;       // 良品数
+  //           // テスト
+  //           ProgTotal=Number(ProgTotal)+Number(this.formarprogs[n].good_prod);
+  //           daycount++;
 
-        }
-        for(let m=0;m<daycount;m++){
-            // テスト
-            PlanTotal = Number(PlanTotal)+Number(this.formarplans[m].target_prod);
+  //       }
+  //       for(let m=0;m<daycount;m++){
+  //           // テスト
+  //           PlanTotal = Number(PlanTotal)+Number(this.formarplans[m].target_prod);
             
-        }
-        if(PlanTotal>ProgTotal){
+  //       }
+  //       if(PlanTotal>ProgTotal){
+  //           this.f_judge = '✖';
+  //           this.f_delta = Math.floor(PlanTotal-ProgTotal);
+  //       }
+  //       else{
+  //           this.f_judge = '〇';
+  //           this.f_delta = Math.floor(ProgTotal - PlanTotal);
+  //       }
+
+  //     },
+  //   error: (err) => console.error(err),
+  //   });
+    
+  // }
+
+  // displayProgResult_machining(){
+  //   //Saturnは切削・鍛造を別々で表示
+  //   const date = getFirstDayOfCurrentMonthInJST();      // 今月1日をstring型で生成
+  //   const parts = 'all';
+  //   const machine = 'all';
+  //   let progByDay: number[] = new Array(31).fill(0);      //生産実績
+  //   let planByDay: number[] = new Array(31).fill(0);      //日ごと生産計画数
+  //   let daycount = 0;       // 稼働日数(生産進捗表示に使用)
+  //   let PlanTotal = 0;
+  //   let ProgTotal = 0;
+  //   // 工場指定(Saturn:5)
+  //   // 切削
+  //   this.kpiService.getMachiningKPI(5, parts, machine, date).pipe(takeUntil(this.destroy$))
+  //   .subscribe({
+  //     next: (res: MachiningResponse) => {
+  //       // --- アクセス方法 ---
+  //       this.machiningplans = Array.isArray(res.MachiningPlan) ? res.MachiningPlan : [];
+  //       this.machiningprogs = Array.isArray(res.MachiningProg) ? res.MachiningProg : [];
+        
+  //       const orderByMonth = this.machiningplans[0].total;    //月の切削指示数
+  //       const planPerline = Math.ceil(this.machiningplans[0].target_prod);
+  //       // 生産実績
+  //       for(let n=0;n<this.machiningprogs.length;n++){
+  //           // 日付部分をintに変換
+  //           const day = parseInt(this.machiningprogs[n].prod_date.split('-')[2], 10); 
+  //           progByDay[day-1] = this.machiningprogs[n].good_prod;       // 良品数
+  //           planByDay[day-1] = planPerline;     // 生産指示数
+  //           // 切削稼働日を格納
+  //           daycount = daycount+1;
+  //           // 生産計画と生産実績の累積を格納
+  //           PlanTotal = Number(PlanTotal+planPerline);
+  //           ProgTotal = Number(ProgTotal)+Number(this.machiningprogs[n].good_prod);
+            
+  //       }
+          
+  //       // 工場全体の生産進捗勝ち負け表示
+  //       if(orderByMonth < PlanTotal){
+  //         PlanTotal = orderByMonth;
+  //       }
+  //       if(PlanTotal>ProgTotal){
+  //         this.judge = '✖';
+  //         this.delta = Math.floor(PlanTotal-ProgTotal);
+  //       }
+  //       else{
+  //         this.judge = '〇';
+  //         this.delta = Math.floor(ProgTotal - PlanTotal);
+  //       }
+  //     },
+  //     error: (err) => console.error(err),
+  //     });
+  // }
+
+  ForgingProgressResult(){
+    const now = new Date();
+    const year = now.getFullYear();
+    const month = now.getMonth()+1;
+    const today = now.getDate();
+    const ym = year*100+month;
+    let weekdays = getWeekdaysThisMonthUntilYesterday(now);
+    this.kpiService.getProgressForging(5,ym,today).pipe(takeUntil(this.destroy$))
+        .subscribe({
+          next:(res: ForgingTotalResponse) => {
+            const PlanTotal = Number(res.ForgingPlanTotal.target_prod);
+            const ProgTotal = Number(res.ForgingProgTotal.good_prod);
+            
+            if(PlanTotal>ProgTotal){
             this.f_judge = '✖';
             this.f_delta = Math.floor(PlanTotal-ProgTotal);
-        }
-        else{
-            this.f_judge = '〇';
-            this.f_delta = Math.floor(ProgTotal - PlanTotal);
-        }
+            }
+            else{
+                this.f_judge = '〇';
+                this.f_delta = Math.floor(ProgTotal - PlanTotal);
+            }
+          }
 
-      },
-    error: (err) => console.error(err),
-    });
-    
+      });  
+  
   }
 
-  displayProgResult_machining(){
-    //Saturnは切削・鍛造を別々で表示
-    const date = getFirstDayOfCurrentMonthInJST();      // 今月1日をstring型で生成
-    const parts = 'all';
-    const machine = 'all';
-    let progByDay: number[] = new Array(31).fill(0);      //生産実績
-    let planByDay: number[] = new Array(31).fill(0);      //日ごと生産計画数
-    let daycount = 0;       // 稼働日数(生産進捗表示に使用)
-    let PlanTotal = 0;
-    let ProgTotal = 0;
-    // 工場指定(Saturn:5)
-    // 切削
-    this.kpiService.getMachiningKPI(5, parts, machine, date).pipe(takeUntil(this.destroy$))
-    .subscribe({
-      next: (res: MachiningResponse) => {
-        // --- アクセス方法 ---
-        this.machiningplans = Array.isArray(res.MachiningPlan) ? res.MachiningPlan : [];
-        this.machiningprogs = Array.isArray(res.MachiningProg) ? res.MachiningProg : [];
-        
-        const orderByMonth = this.machiningplans[0].total;    //月の切削指示数
-        const planPerline = Math.ceil(this.machiningplans[0].target_prod);
-        // 生産実績
-        for(let n=0;n<this.machiningprogs.length;n++){
-            // 日付部分をintに変換
-            const day = parseInt(this.machiningprogs[n].prod_date.split('-')[2], 10); 
-            progByDay[day-1] = this.machiningprogs[n].good_prod;       // 良品数
-            planByDay[day-1] = planPerline;     // 生産指示数
-            // 切削稼働日を格納
-            daycount = daycount+1;
-            // 生産計画と生産実績の累積を格納
-            PlanTotal = Number(PlanTotal+planPerline);
-            ProgTotal = Number(ProgTotal)+Number(this.machiningprogs[n].good_prod);
+  MachiningProgressResult(){
+    const now = new Date();
+    const year = now.getFullYear();
+    const month = now.getMonth()+1;
+    const today = now.getDate();
+    const ym = year*100+month;
+    let weekdays = getWeekdaysThisMonthUntilYesterday(now);
+    this.kpiService.getMachiningProgress(5,ym,today).pipe(takeUntil(this.destroy$))
+        .subscribe({
+          next: (res:MachiningTotalResponse) => {
+            const PlanPerDay = res.MachiningPlanTotal.target_prod;
+            const orderByMonth = res.MachiningPlanTotal.total;
+            const ProgTotal = res.MachiningProgTotal.good_prod;
+            let PlanTotal = Number(PlanPerDay)*weekdays;
             
-        }
-          
-        // 工場全体の生産進捗勝ち負け表示
+            // 工場全体の生産進捗勝ち負け表示
         if(orderByMonth < PlanTotal){
           PlanTotal = orderByMonth;
         }

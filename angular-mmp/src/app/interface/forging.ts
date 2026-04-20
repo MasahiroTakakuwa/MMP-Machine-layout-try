@@ -1,7 +1,15 @@
 // 鍛造進捗勝ち負け計算用数値格納
-export interface ForgingTotalsResponse {
-  ForgingPlan_factory: number; // 返却が数値なら number に
-  ForgingProg_factory: number; // 同上
+export interface ForgingTotalResponse {
+  ForgingPlanTotal: PlanTotal;
+  ForgingProgTotal: ProgTotal;
+}
+
+interface PlanTotal {
+  target_prod:number;
+}
+
+interface ProgTotal {
+  good_prod:number;
 }
 
 export interface ForgingPlanItem {
