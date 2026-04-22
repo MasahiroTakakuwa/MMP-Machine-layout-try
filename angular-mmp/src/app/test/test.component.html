@@ -2,15 +2,146 @@
     <div class="col-span-12 xl:col-span-12">
         <div class="card">
             <div class="p-formgroup-inline flex flex-wrap gap-3 align-items-center">
-                <p-datepicker
-                    [(ngModel)]="selectedDate"
-                    view="month"
-                    dateFormat="yy/mm"
-                    [yearNavigator]="true"
-                    yearRange="2020:2035"
-                    [maxDate]="maxDate"
-                    showIcon="true">
-                </p-datepicker>
+                <div class="time-range">
+                    <!-- From -->
+                    <div class="time-block">
+                        <label class="label">開始時刻</label>
+                        <div class="time-input-wrapper">
+                        <input
+                            pInputText
+                            class="time-input"
+                            [(ngModel)]="fromValue"
+                            maxlength="5"
+                        />
+                        <i
+                            class="pi pi-clock clock-icon"
+                            (click)="toggle($event, 'from')">
+                        </i>
+                        </div>
+                        <p-popover
+                        #popover
+                        [dismissable]="true"
+                        >
+                        <div class="reel-container">
+                            <!-- Hour -->
+                            <div
+                            class="reel-box"
+                            (wheel)="onHourWheel($event)"
+                            >
+                            <div
+                                class="reel"
+                                [style.transform]="'translateY(' + (-currentHourIndex * itemHeight) + 'px)'"
+                            >
+                                <div class="reel-item" *ngFor="let h of hours">
+                                {{ h }}
+                                </div>
+                            </div>
+                            </div>
+
+                            <!-- Minute -->
+                            <div
+                            class="reel-box"
+                            (wheel)="onMinuteWheel($event)"
+                            >
+                            <div
+                                class="reel"
+                                [style.transform]="'translateY(' + (-currentMinuteIndex * itemHeight) + 'px)'"
+                            >
+                                <div class="reel-item" *ngFor="let m of minutes">
+                                {{ m }}
+                                </div>
+                            </div>
+                            </div>
+
+                        </div>
+                        </p-popover>
+                    </div>
+                    <span class="range-separator">~</span>
+
+                    <!-- To -->
+                    <div class="time-block">
+                        <label class="label">終了時刻</label>
+                        <div class="time-input-wrapper">
+                        <input
+                            pInputText
+                            class="time-input"
+                            [(ngModel)]="toValue"
+                            maxlength="5"
+                        />
+                        <i
+                            class="pi pi-clock clock-icon"
+                            (click)="toggle($event, 'to')">
+                        </i>
+                        </div>
+                        <p-popover
+                        #popover
+                        [dismissable]="true"
+                        >
+                        <div class="reel-container">
+                            <!-- Hour -->
+                            <div
+                            class="reel-box"
+                            (wheel)="onHourWheel($event)"
+                            >
+                            <div
+                                class="reel"
+                                [style.transform]="'translateY(' + (-currentHourIndex * itemHeight) + 'px)'"
+                            >
+                                <div class="reel-item" *ngFor="let h of hours">
+                                {{ h }}
+                                </div>
+                            </div>
+                            </div>
+
+                            <!-- Minute -->
+                            <div
+                            class="reel-box"
+                            (wheel)="onMinuteWheel($event)"
+                            >
+                            <div
+                                class="reel"
+                                [style.transform]="'translateY(' + (-currentMinuteIndex * itemHeight) + 'px)'"
+                            >
+                                <div class="reel-item" *ngFor="let m of minutes">
+                                {{ m }}
+                                </div>
+                            </div>
+                            </div>
+
+                        </div>
+                        </p-popover>
+                    </div>
+                </div>
+                <!-- 一時コメントアウト -->
+                <!-- <div class="time-picker">
+                <div class="reel-box"
+                     (wheel)="onHourWheel($event)">
+                    <div
+                    class="reel"
+                    [style.transform]="'translateY(' + (-hourIndex * itemHeight) + 'px)'"
+                    >
+                    <div class="reel-item" *ngFor="let h of hours">
+                        {{ h }}
+                    </div>
+                    </div>
+                </div>
+
+                <span class="colon">:</span>
+
+                <div class="reel-box" (wheel)="onMinuteWheel($event)">
+                    <div class="reel"
+                    [style.transform]="'translateY(' + (-minuteIndex * itemHeight) + 'px)'"
+                    >
+                    <div class="reel-item" *ngFor="let m of minutes">
+                        {{ m }}
+                    </div>
+                    </div>
+                </div>
+
+                </div>
+                <p-tag severity="info" class="p-mt-2">
+                選択時刻：{{ selectedTime }}
+                </p-tag> -->
             </div>
         </div>
     </div>

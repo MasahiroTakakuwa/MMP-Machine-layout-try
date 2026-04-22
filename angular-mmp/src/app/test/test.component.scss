@@ -1,0 +1,94 @@
+
+.time-input-wrapper {
+  position: relative;
+  width: 90px;
+  // width: auto;
+}
+
+.time-input {
+  width: 100%;
+  height: 36px;
+  padding: 0;                 /* ← 内部余白なし */
+  text-align: center;
+  padding-right: 28px !important; /* 時計アイコン分だけ */
+}
+
+
+.time-range {
+  display: flex;            /* 横並びの核心 */
+  align-items: flex-end;
+  gap: 16px;
+}
+
+.time-block {
+  display: flex;
+  flex-direction: column;
+}
+
+.range-separator {
+  margin-top: 18px;
+  font-size: 18px;
+  color: #666;
+}
+
+// :host ::ng-deep .p-inputtext {
+//   padding: 0;                 /* PrimeNGのpadding打消し */
+//   border: 1px solid #ced4da;  /* 枠線表示 */
+//   border-radius: 8px;
+// }
+
+:host ::ng-deep .p-inputtext {
+  padding: 0 !important;
+  height: 36px;
+  line-height: 36px;
+  box-sizing: border-box;
+  // background: rgba(255, 0, 0, 0.1)
+}
+
+.clock-icon {
+  position: absolute;
+  right: 8px;
+  top: 50%;
+  transform: translateY(-50%);
+  cursor: pointer;
+  color: #666;
+}
+
+.time-picker {
+  display: flex;
+  align-items: center;
+  font-size: 24px;
+}
+
+.reel-container {
+  display: flex;          /* ← これが必須 */
+  flex-direction: row;   /* ← 明示的に横 */
+  gap: 12px;
+  align-items: center;
+}
+
+.reel-box {
+  width: 60px;
+  height: 40px;
+  overflow: hidden;
+  border: 1px solid #ccc;
+  text-align: center;
+  user-select: none;
+}
+
+.reel-box:hover {
+  cursor: ns-resize;
+}
+
+.reel {
+  transition: transform 0.25s ease-out;
+}
+
+.reel-item {
+  height: 40px;
+  line-height: 40px;
+}
+
+.colon {
+  margin: 0 8px;
+}
